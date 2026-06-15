@@ -93,7 +93,7 @@ export const geminiTask = task({
     if (!apiKey) throw new Error("GEMINI_API_KEY is not set");
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const modelName = payload.model || "gemini-1.5-pro";
+    const modelName = payload.model || "gemini-2.0-flash";
     
     const model = genAI.getGenerativeModel({
       model: modelName,

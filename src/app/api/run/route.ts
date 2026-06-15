@@ -159,7 +159,7 @@ export async function POST(req: NextRequest) {
 
             const genAI = new GoogleGenerativeAI(geminiApiKey);
             const model = genAI.getGenerativeModel({
-              model: node.data?.model || "gemini-1.5-pro",
+              model: node.data?.model || "gemini-2.0-flash",
               systemInstruction: inputs.system_prompt,
             });
 

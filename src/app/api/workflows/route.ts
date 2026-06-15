@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
         type: "gemini",
         position: { x: 450, y: 750 },
         data: {
-          model: "gemini-1.5-pro",
+          model: "gemini-2.0-flash",
           inputs: { system_prompt: "You are a marketing copywriter. Write a one-paragraph product description." }
         },
       },
@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
         type: "gemini",
         position: { x: 850, y: 750 },
         data: {
-          model: "gemini-1.5-pro",
+          model: "gemini-2.0-flash",
           inputs: { system_prompt: "Condense the following product description into a tweet-length hook (under 240 characters)." }
         },
       },
@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
         type: "gemini",
         position: { x: 1250, y: 400 },
         data: {
-          model: "gemini-1.5-pro",
+          model: "gemini-2.0-flash",
           inputs: { system_prompt: "You are a social media manager. Combine the tweet hook and the two product crops into a final marketing post." }
         },
       },

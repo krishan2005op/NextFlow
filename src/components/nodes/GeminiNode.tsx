@@ -26,8 +26,8 @@ export function GeminiNode({ id, data }: any) {
             onChange={(e) => updateNode(id, { model: e.target.value })}
             className="bg-transparent text-white font-medium text-sm outline-none focus:ring-1 focus:ring-brand-purple rounded px-1 nodrag"
           >
-            <option value="gemini-3.1-pro" className="bg-[#1A1A1A]">Gemini 3.1 Pro</option>
-            <option value="gemini-1.5-pro" className="bg-[#1A1A1A]">Gemini 1.5 Pro</option>
+            <option value="gemini-2.0-flash" className="bg-[#1A1A1A]">Gemini 2.0 Flash</option>
+            <option value="gemini-2.0-flash-lite" className="bg-[#1A1A1A]">Gemini 2.0 Flash Lite</option>
             <option value="gemini-1.5-flash" className="bg-[#1A1A1A]">Gemini 1.5 Flash</option>
           </select>
         </div>
