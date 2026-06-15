@@ -111,8 +111,12 @@ export const geminiTask = task({
         } else {
           // Download the image
           const imgRes = await axios.get(url, { responseType: "arraybuffer" });
+          const contentType = (imgRes.headers["content-type"] as string) ?? "";
+          if (!contentType.startsWith("image/")) {
+            throw new Error(`Failed to download image for Gemini: unexpected content type ${contentType}`);
+          }
           base64Data = Buffer.from(imgRes.data, "binary").toString("base64");
-          mimeType = (imgRes.headers["content-type"] as string) || "image/jpeg";
+          mimeType = contentType || "image/jpeg";
         }
 
         if (base64Data) {
