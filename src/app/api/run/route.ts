@@ -105,36 +105,71 @@ export async function POST(req: NextRequest) {
           } 
           else if (node.type === "crop_image") {
             const inputs = resolveInputs(nodeId, node);
-            const result = await tasks.triggerAndWait<typeof cropImageTask>("crop-image", {
+            const handle = await tasks.trigger<typeof cropImageTask>("crop-image", {
               imageUrl: inputs.input_image,
               x: inputs.x || 0,
               y: inputs.y || 0,
               width: inputs.width || 100,
               height: inputs.height || 100,
             });
-            if (result.ok) {
-              output = { output_image: result.output?.croppedImageUrl };
-            } else {
-              throw new Error(`Task failed: ${result.error}`);
+
+            // Poll for completion
+            let isDone = false;
+            let finalOutput: any = null;
+            let errorMsg = null;
+            
+            while (!isDone) {
+              await new Promise(r => setTimeout(r, 1500));
+              const res = await fetch(`https://api.trigger.dev/api/v1/runs/${handle.id}`, {
+                headers: { Authorization: `Bearer ${process.env.TRIGGER_API_KEY}` }
+              });
+              const runData = await res.json();
+              if (runData.status === "SUCCESS" || runData.status === "COMPLETED") {
+                isDone = true;
+                finalOutput = runData.output;
+              } else if (runData.status === "FAILURE" || runData.status === "FAILED" || runData.status === "CANCELED" || runData.status === "CRASHED") {
+                isDone = true;
+                errorMsg = "Task failed with status: " + runData.status;
+              }
             }
+
+            if (errorMsg) throw new Error(errorMsg);
+            output = { output_image: finalOutput?.croppedImageUrl };
           } 
           else if (node.type === "gemini") {
             const inputs = resolveInputs(nodeId, node);
             let prompt = inputs.prompt;
             if (!prompt && node.data?.prompt) prompt = node.data.prompt;
 
-            const result = await tasks.triggerAndWait<typeof geminiTask>("gemini-task", {
+            const handle = await tasks.trigger<typeof geminiTask>("gemini-task", {
               prompt: prompt || "",
               systemPrompt: inputs.system_prompt,
               imageUrl: inputs.image_vision,
               model: node.data?.model || "gemini-1.5-pro",
             });
-            if (result.ok) {
-              output = { response: result.output?.response };
-            } else {
-              throw new Error(`Task failed: ${result.error}`);
+
+            let isDone = false;
+            let finalOutput: any = null;
+            let errorMsg = null;
+            
+            while (!isDone) {
+              await new Promise(r => setTimeout(r, 1500));
+              const res = await fetch(`https://api.trigger.dev/api/v1/runs/${handle.id}`, {
+                headers: { Authorization: `Bearer ${process.env.TRIGGER_API_KEY}` }
+              });
+              const runData = await res.json();
+              if (runData.status === "SUCCESS" || runData.status === "COMPLETED") {
+                isDone = true;
+                finalOutput = runData.output;
+              } else if (runData.status === "FAILURE" || runData.status === "FAILED" || runData.status === "CANCELED" || runData.status === "CRASHED") {
+                isDone = true;
+                errorMsg = "Task failed with status: " + runData.status;
+              }
             }
-          } 
+
+            if (errorMsg) throw new Error(errorMsg);
+            output = { response: finalOutput?.response };
+          }
           else if (node.type === "response") {
             const inputs = resolveInputs(nodeId, node);
             output = { result: inputs.result };

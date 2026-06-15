@@ -1,11 +1,11 @@
 "use client";
 
-import { Handle, Position, useHandleConnections } from "@xyflow/react";
+import { Handle, Position, useNodeConnections } from "@xyflow/react";
 import { useWorkflowStore } from "@/store/workflow-store";
 import { Image as ImageIcon } from "lucide-react";
 
 const InputField = ({ id, label, type, value, onChange, nodeId, disabled }: any) => {
-  const connections = useHandleConnections({ type: "target", id });
+  const connections = useNodeConnections({ handleType: "target", handleId: id });
   const isConnected = connections.length > 0;
 
   return (
@@ -46,7 +46,7 @@ export function CropImageNode({ id, data }: any) {
     updateNode(id, { inputs: { ...inputs, [key]: val } });
   };
 
-  const imageConnections = useHandleConnections({ type: "target", id: "input_image" });
+  const imageConnections = useNodeConnections({ handleType: "target", handleId: "input_image" });
   const isImageConnected = imageConnections.length > 0;
 
   return (
