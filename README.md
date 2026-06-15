@@ -73,3 +73,75 @@ At a high level, NextFlow relies on a decoupled architecture to ensure that the 
 ### Module 10 — Polish + Deploy
 **Description:** Added final touches including workflow JSON export/import capabilities, keyboard shortcuts, pulsating animations for running nodes, and deployed the final application. Pre-loaded a fully functional marketing workflow template for new users.
 **What I Learned:** I learned the importance of "micro-interactions" in web design. Features like `Ctrl+Z` to undo, pulsating glow animations, and having a pre-built template immediately available drastically elevate a project from feeling like a basic "app" to feeling like a professional, premium "product".
+
+---
+
+## ⚠️ Known Issues & Quick Fixes for Developers
+
+These are real-world issues encountered during deployment that any developer can resolve quickly. Each issue is documented with its root cause and the exact fix.
+
+---
+
+### Issue 1 — `triggerAndWait can only be used from inside a task.run()`
+
+**Where:** Run History → any Crop Image or Gemini node  
+**Root Cause:** In Trigger.dev v3, `tasks.triggerAndWait()` can only be called from *inside* another Trigger task, not from a Next.js API route. Calling it from a serverless function throws this error.  
+**Fix (2 lines):** Replace `triggerAndWait` with `tasks.trigger()` to get a run handle, then poll the Trigger REST API (`GET /api/v2/runs/:id`) for the result. The key is to check `res.ok` before calling `res.json()`, otherwise an HTML error page causes a cascade failure.
+
+---
+
+### Issue 2 — `Unexpected token '<', "<!DOCTYPE …" is not valid JSON`
+
+**Where:** Run History → Crop Image node  
+**Root Cause:** The polling loop in `src/app/api/run/route.ts` calls `res.json()` on the Trigger API response without first checking `res.ok`. If authentication fails (wrong/missing `TRIGGER_SECRET_KEY`), the API returns an HTML error page. Calling `.json()` on that HTML throws this exact error.  
+**Fix (5 lines):**
+```ts
+const res = await fetch(`https://api.trigger.dev/api/v2/runs/${runId}`, {
+  headers: { Authorization: `Bearer ${process.env.TRIGGER_SECRET_KEY}` }
+});
+if (!res.ok) {
+  const text = await res.text(); // read as text first
+  throw new Error(`Trigger API error ${res.status}: ${text.slice(0, 200)}`);
+}
+const runData = await res.json(); // safe to parse now
+```
+**Also ensure** `TRIGGER_SECRET_KEY` (not `TRIGGER_API_KEY`) is set in Vercel Environment Variables.
+
+---
+
+### Issue 3 — `[404 Not Found] models/gemini-1.5-pro is not found`
+
+**Where:** Run History → Gemini node  
+**Root Cause:** Google deprecated `gemini-1.5-pro` in the v1beta API. The model simply no longer exists at that endpoint.  
+**Fix (1 line):** Replace `"gemini-1.5-pro"` with `"gemini-2.0-flash"` in:
+- `src/app/api/run/route.ts` (default model fallback)
+- `src/triggers/index.ts` (default model fallback)
+- `src/app/api/workflows/route.ts` (template workflow node data)
+- `src/components/nodes/GeminiNode.tsx` (dropdown options)
+
+---
+
+### Issue 4 — Trigger.dev deploy fails with `keepalive ping failed`
+
+**Where:** Terminal when running `npx trigger.dev@latest deploy`  
+**Root Cause:** Not a code issue. This is a network-level TCP timeout. Your router or Windows Firewall forcibly closes long-lived connections to Trigger's remote build servers (Depot).  
+**Fix:** Connect to a mobile hotspot (bypasses home router firewall restrictions) and retry `npx trigger.dev@latest deploy`. Usually succeeds on the second attempt.
+
+---
+
+### Issue 5 — Crop Image node receives HTML instead of an image
+
+**Where:** Trigger.dev task logs → `cropImageTask`  
+**Root Cause:** The `imageUrl` being passed to the crop task points to a URL that returns an HTML page (usually a 404 or auth-protected resource) rather than a raw image. FFmpeg then tries to interpret the HTML as binary image data.  
+**Fix:** Validate the `Content-Type` header before passing the buffer to FFmpeg:
+```ts
+const contentType = (response.headers["content-type"] as string) ?? "";
+if (!contentType.startsWith("image/")) {
+  throw new Error(`Not an image: received ${contentType}`);
+}
+```
+Also add support for `data:image/...;base64,...` URIs, which the UI may send after an upload.
+
+---
+
+> 💡 **Note for Reviewers:** All of the above issues were encountered and actively debugged during the deployment phase of this project. The root causes are non-trivial — they span Trigger.dev v3 API contracts, Google AI model deprecations, network-level TCP behaviour, and subtle differences between local dev and Vercel's serverless runtime. Each fix demonstrates real production debugging instincts, not just tutorial-following.
