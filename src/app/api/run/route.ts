@@ -4,6 +4,39 @@ import { db } from "@/lib/db";
 import { topologicalSort } from "@/lib/dag";
 import { tasks } from "@trigger.dev/sdk/v3";
 import { cropImageTask, geminiTask } from "@/triggers";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import axios from "axios";
+
+// Helper: poll a Trigger.dev run until it completes
+async function pollTriggerRun(runId: string): Promise<any> {
+  const apiKey = process.env.TRIGGER_SECRET_KEY || process.env.TRIGGER_API_KEY;
+  if (!apiKey) throw new Error("TRIGGER_SECRET_KEY is not set");
+
+  const terminalStatuses = new Set(["SUCCESS", "COMPLETED", "FAILURE", "FAILED", "CANCELED", "CRASHED", "TIMED_OUT"]);
+
+  while (true) {
+    await new Promise(r => setTimeout(r, 2000));
+    const res = await fetch(`https://api.trigger.dev/api/v2/runs/${runId}`, {
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Trigger API error ${res.status}: ${text.slice(0, 200)}`);
+    }
+
+    const runData = await res.json();
+    const status: string = runData.status ?? runData.state ?? "";
+
+    if (status === "SUCCESS" || status === "COMPLETED") {
+      return runData.output;
+    }
+    if (terminalStatuses.has(status)) {
+      throw new Error(`Trigger run ${runId} ended with status: ${status}`);
+    }
+    // still running – loop
+  }
+}
 
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
@@ -112,63 +145,46 @@ export async function POST(req: NextRequest) {
               width: inputs.width || 100,
               height: inputs.height || 100,
             });
-
-            // Poll for completion
-            let isDone = false;
-            let finalOutput: any = null;
-            let errorMsg = null;
-            
-            while (!isDone) {
-              await new Promise(r => setTimeout(r, 1500));
-              const res = await fetch(`https://api.trigger.dev/api/v1/runs/${handle.id}`, {
-                headers: { Authorization: `Bearer ${process.env.TRIGGER_API_KEY}` }
-              });
-              const runData = await res.json();
-              if (runData.status === "SUCCESS" || runData.status === "COMPLETED") {
-                isDone = true;
-                finalOutput = runData.output;
-              } else if (runData.status === "FAILURE" || runData.status === "FAILED" || runData.status === "CANCELED" || runData.status === "CRASHED") {
-                isDone = true;
-                errorMsg = "Task failed with status: " + runData.status;
-              }
-            }
-
-            if (errorMsg) throw new Error(errorMsg);
-            output = { output_image: finalOutput?.croppedImageUrl };
+            const cropResult = await pollTriggerRun(handle.id);
+            output = { output_image: cropResult?.croppedImageUrl };
           } 
           else if (node.type === "gemini") {
             const inputs = resolveInputs(nodeId, node);
             let prompt = inputs.prompt;
             if (!prompt && node.data?.prompt) prompt = node.data.prompt;
 
-            const handle = await tasks.trigger<typeof geminiTask>("gemini-task", {
-              prompt: prompt || "",
-              systemPrompt: inputs.system_prompt,
-              imageUrl: inputs.image_vision,
+            // Call Gemini directly from the route (no Trigger needed for text-only)
+            const geminiApiKey = process.env.GEMINI_API_KEY;
+            if (!geminiApiKey) throw new Error("GEMINI_API_KEY is not set");
+
+            const genAI = new GoogleGenerativeAI(geminiApiKey);
+            const model = genAI.getGenerativeModel({
               model: node.data?.model || "gemini-1.5-pro",
+              systemInstruction: inputs.system_prompt,
             });
 
-            let isDone = false;
-            let finalOutput: any = null;
-            let errorMsg = null;
-            
-            while (!isDone) {
-              await new Promise(r => setTimeout(r, 1500));
-              const res = await fetch(`https://api.trigger.dev/api/v1/runs/${handle.id}`, {
-                headers: { Authorization: `Bearer ${process.env.TRIGGER_API_KEY}` }
-              });
-              const runData = await res.json();
-              if (runData.status === "SUCCESS" || runData.status === "COMPLETED") {
-                isDone = true;
-                finalOutput = runData.output;
-              } else if (runData.status === "FAILURE" || runData.status === "FAILED" || runData.status === "CANCELED" || runData.status === "CRASHED") {
-                isDone = true;
-                errorMsg = "Task failed with status: " + runData.status;
+            const parts: any[] = [{ text: prompt || "" }];
+
+            if (inputs.image_vision) {
+              const imageUrls = Array.isArray(inputs.image_vision) ? inputs.image_vision : [inputs.image_vision];
+              for (const url of imageUrls) {
+                if (!url) continue;
+                if (url.startsWith("data:")) {
+                  const matches = url.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/);
+                  if (matches) {
+                    parts.push({ inlineData: { mimeType: matches[1], data: matches[2] } });
+                  }
+                } else {
+                  const imgRes = await axios.get(url, { responseType: "arraybuffer" });
+                  const ct = (imgRes.headers["content-type"] as string) ?? "";
+                  if (!ct.startsWith("image/")) throw new Error(`Not an image URL: ${url}`);
+                  parts.push({ inlineData: { mimeType: ct, data: Buffer.from(imgRes.data, "binary").toString("base64") } });
+                }
               }
             }
 
-            if (errorMsg) throw new Error(errorMsg);
-            output = { response: finalOutput?.response };
+            const geminiResult = await model.generateContent(parts);
+            output = { response: geminiResult.response.text() };
           }
           else if (node.type === "response") {
             const inputs = resolveInputs(nodeId, node);
