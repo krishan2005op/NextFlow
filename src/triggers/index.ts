@@ -20,6 +20,10 @@ export const cropImageTask = task({
 
     // Download the image
     const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
+    const contentType = response.headers["content-type"] as string;
+    if (!contentType || !contentType.startsWith("image/")) {
+      throw new Error(`Failed to download image: unexpected content type ${contentType}`);
+    }
     const buffer = Buffer.from(response.data, "binary");
 
     const tmpDir = os.tmpdir();
