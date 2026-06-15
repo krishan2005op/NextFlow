@@ -15,9 +15,9 @@ export const cropImageTask = task({
   run: async (payload: { imageUrl: string; x: number; y: number; width: number; height: number }) => {
     const { imageUrl, x, y, width, height } = payload;
 
-    // MANDATORY 30-second delay
-    await new Promise((resolve) => setTimeout(resolve, 30000));
-
+    if (!imageUrl) {
+      throw new Error('cropImageTask: imageUrl is required but was empty');
+    }
     // Download the image (support data‑URI)
     let buffer: Buffer;
     if (imageUrl.startsWith('data:')) {
