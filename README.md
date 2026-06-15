@@ -76,7 +76,7 @@ At a high level, NextFlow relies on a decoupled architecture to ensure that the 
 
 ---
 
-## 🚧 Issues I Faced During Deployment
+##  Issues I Faced During Deployment
 
 This is a personal account of the real problems I ran into while trying to get this project live. I am documenting them honestly because I think debugging is just as important a skill as building.
 
@@ -106,5 +106,5 @@ Every time I ran `npx trigger.dev@latest deploy`, the build would get 80% done a
 
 ---
 
-> 📝 **Note:** I ran out of time to fully resolve all of the above on the live deployment. The core architecture — the canvas, DAG execution engine, SSE streaming, authentication, and database — all work correctly. The remaining issues are specifically around the Trigger.dev cloud integration and the live API environment. Given more time (or a stable network), these would be straightforward to resolve.
+>  **Note:** I ran out of time to fully resolve all of the above on the live deployment. The core architecture — the canvas, DAG execution engine, SSE streaming, authentication, and database — all work correctly. The remaining issues are specifically around the Trigger.dev cloud integration and the live API environment. Given more time (or a stable network), these would be straightforward to resolve.
 
