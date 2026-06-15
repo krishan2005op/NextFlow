@@ -32,6 +32,31 @@ At a high level, NextFlow relies on a decoupled architecture to ensure that the 
 
 ---
 
+##  Features
+ 
+###  Authentication
+- Clerk-powered sign in / sign up
+- Google OAuth + Email support
+- All routes protected — unauthenticated users redirected to sign-in
+- Workflows and history scoped to the authenticated user
+###  Dashboard
+- Lists all workflows belonging to the signed-in user
+- Shows workflow name, last-edited timestamp, and status badge
+- **Create New Workflow** — opens a blank canvas
+- Per-row actions: **Open**, **Rename** (inline), **Delete**
+- Empty state UI when no workflows exist yet
+- Matches Galaxy.ai dashboard styling (sidebar + card/list pattern)
+###  Workflow Canvas
+- Built with **React Flow** — pan, zoom, fit-view
+- **Dot grid background**
+- **MiniMap** (bottom-right) for navigation
+- **Animated purple edges** between nodes
+- Pre-placed **Request-Inputs** (top-left) and **Response** (bottom-right) nodes — cannot be deleted
+- **"+" button** at bottom-center to add new nodes via a floating picker
+- **Undo / Redo** (Ctrl+Z / Ctrl+Shift+Z)
+- **Auto-save** — debounced 1s, persisted to PostgreSQL
+- **Export / Import** workflows as JSON
+
 ## Module Walkthrough & Learnings
 
 ### Module 1 — Project Setup
@@ -107,4 +132,10 @@ Every time I ran `npx trigger.dev@latest deploy`, the build would get 80% done a
 ---
 
 >  **Note:** I ran out of time to fully resolve all of the above on the live deployment. The core architecture — the canvas, DAG execution engine, SSE streaming, authentication, and database — all work correctly. The remaining issues are specifically around the Trigger.dev cloud integration and the live API environment. Given more time (or a stable network), these would be straightforward to resolve.
+
+## 📹 Demo
+
+> Click here to watch the project demo:
+>
+> https://drive.google.com/file/d/1ITxQc9-FJr5zsK54UN8m_CSKVrzjKJcG/view?usp=sharing
 
