@@ -1,7 +1,7 @@
 import { defineConfig } from "@trigger.dev/sdk/v3";
 
 export default defineConfig({
-  project: "nextflow",
+  project: "proj_fetkvoofzkkpemowwpal",
   runtime: "node",
   logLevel: "log",
   // Maximum compute seconds a single run can use
