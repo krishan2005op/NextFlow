@@ -18,13 +18,23 @@ export const cropImageTask = task({
     // MANDATORY 30-second delay
     await new Promise((resolve) => setTimeout(resolve, 30000));
 
-    // Download the image
-    const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
-    const contentType = response.headers["content-type"] as string;
-    if (!contentType || !contentType.startsWith("image/")) {
-      throw new Error(`Failed to download image: unexpected content type ${contentType}`);
+    // Download the image (support data‑URI)
+    let buffer: Buffer;
+    if (imageUrl.startsWith('data:')) {
+      // data:image/png;base64,AAA...
+      const matches = imageUrl.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/);
+      if (!matches) {
+        throw new Error('Invalid data‑URI format for image.');
+      }
+      buffer = Buffer.from(matches[2], 'base64');
+    } else {
+      const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+      const contentType = (response.headers['content-type'] as string) ?? '';
+      if (!contentType.startsWith('image/')) {
+        throw new Error(`Failed to download image for crop: unexpected content type ${contentType}`);
+      }
+      buffer = Buffer.from(response.data, 'binary');
     }
-    const buffer = Buffer.from(response.data, "binary");
 
     const tmpDir = os.tmpdir();
     const inputPath = path.join(tmpDir, `input-${Date.now()}.png`);
