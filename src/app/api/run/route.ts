@@ -7,6 +7,21 @@ import { cropImageTask, geminiTask } from "@/triggers";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import axios from "axios";
 
+// Map any deprecated/invalid model names to a working one
+const SAFE_MODEL = "gemini-2.0-flash";
+const DEPRECATED_MODELS: Record<string, string> = {
+  "gemini-1.5-pro": SAFE_MODEL,
+  "gemini-1.5-pro-latest": SAFE_MODEL,
+  "gemini-3.1-pro": SAFE_MODEL,
+  "gemini-pro": SAFE_MODEL,
+  "gemini-1.0-pro": SAFE_MODEL,
+};
+
+function sanitizeModel(model?: string): string {
+  if (!model) return SAFE_MODEL;
+  return DEPRECATED_MODELS[model] ?? model;
+}
+
 // Helper: poll a Trigger.dev run until it completes
 async function pollTriggerRun(runId: string): Promise<any> {
   const apiKey = process.env.TRIGGER_SECRET_KEY || process.env.TRIGGER_API_KEY;
@@ -34,7 +49,6 @@ async function pollTriggerRun(runId: string): Promise<any> {
     if (terminalStatuses.has(status)) {
       throw new Error(`Trigger run ${runId} ended with status: ${status}`);
     }
-    // still running – loop
   }
 }
 
@@ -153,20 +167,24 @@ export async function POST(req: NextRequest) {
             let prompt = inputs.prompt;
             if (!prompt && node.data?.prompt) prompt = node.data.prompt;
 
-            // Call Gemini directly from the route (no Trigger needed for text-only)
             const geminiApiKey = process.env.GEMINI_API_KEY;
             if (!geminiApiKey) throw new Error("GEMINI_API_KEY is not set");
 
+            // Always sanitize model — handles deprecated names saved in DB
+            const modelName = sanitizeModel(node.data?.model);
+
             const genAI = new GoogleGenerativeAI(geminiApiKey);
-            const model = genAI.getGenerativeModel({
-              model: node.data?.model || "gemini-2.0-flash",
-              systemInstruction: inputs.system_prompt,
+            const genModel = genAI.getGenerativeModel({
+              model: modelName,
+              systemInstruction: inputs.system_prompt || undefined,
             });
 
-            const parts: any[] = [{ text: prompt || "" }];
+            const parts: any[] = [{ text: prompt || "Hello" }];
 
             if (inputs.image_vision) {
-              const imageUrls = Array.isArray(inputs.image_vision) ? inputs.image_vision : [inputs.image_vision];
+              const imageUrls = Array.isArray(inputs.image_vision)
+                ? inputs.image_vision
+                : [inputs.image_vision];
               for (const url of imageUrls) {
                 if (!url) continue;
                 if (url.startsWith("data:")) {
@@ -183,7 +201,18 @@ export async function POST(req: NextRequest) {
               }
             }
 
-            const geminiResult = await model.generateContent(parts);
+            // Retry once on 503 (Gemini transient error)
+            let geminiResult;
+            try {
+              geminiResult = await genModel.generateContent(parts);
+            } catch (e: any) {
+              if (e?.message?.includes("503") || e?.message?.includes("Service Unavailable")) {
+                await new Promise(r => setTimeout(r, 3000));
+                geminiResult = await genModel.generateContent(parts);
+              } else {
+                throw e;
+              }
+            }
             output = { response: geminiResult.response.text() };
           }
           else if (node.type === "response") {
