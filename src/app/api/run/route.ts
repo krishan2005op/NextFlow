@@ -112,7 +112,11 @@ export async function POST(req: NextRequest) {
               width: inputs.width || 100,
               height: inputs.height || 100,
             });
-            output = { output_image: result.output?.croppedImageUrl };
+            if (result.ok) {
+              output = { output_image: result.output?.croppedImageUrl };
+            } else {
+              throw new Error(`Task failed: ${result.error}`);
+            }
           } 
           else if (node.type === "gemini") {
             const inputs = resolveInputs(nodeId, node);
@@ -125,7 +129,11 @@ export async function POST(req: NextRequest) {
               imageUrl: inputs.image_vision,
               model: node.data?.model || "gemini-1.5-pro",
             });
-            output = { response: result.output?.response };
+            if (result.ok) {
+              output = { response: result.output?.response };
+            } else {
+              throw new Error(`Task failed: ${result.error}`);
+            }
           } 
           else if (node.type === "response") {
             const inputs = resolveInputs(nodeId, node);

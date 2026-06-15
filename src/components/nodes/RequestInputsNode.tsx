@@ -132,9 +132,8 @@ export function RequestInputsNode({ id, data }: any) {
                 <textarea
                   value={field.value}
                   onChange={(e) => updateField(field.id, { value: e.target.value })}
-                  className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded text-xs text-gray-300 p-2 min-h-[60px] resize-none focus:outline-none focus:border-brand-purple"
+                  className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded text-xs text-gray-300 p-2 min-h-[60px] resize-none focus:outline-none focus:border-brand-purple nodrag"
                   placeholder="Enter text..."
-                  className="nodrag"
                 />
               ) : (
                 <div className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded p-2 flex flex-col items-center justify-center min-h-[80px] relative">

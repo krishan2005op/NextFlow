@@ -108,7 +108,7 @@ export const geminiTask = task({
           // Download the image
           const imgRes = await axios.get(url, { responseType: "arraybuffer" });
           base64Data = Buffer.from(imgRes.data, "binary").toString("base64");
-          mimeType = imgRes.headers["content-type"] || "image/jpeg";
+          mimeType = (imgRes.headers["content-type"] as string) || "image/jpeg";
         }
 
         if (base64Data) {
