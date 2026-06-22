@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { tasks } from "@trigger.dev/sdk/v3";
+import { runs, tasks } from "@trigger.dev/sdk/v3";
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { topologicalSort } from "@/lib/dag";
@@ -32,7 +32,9 @@ type TriggerRunOutput = {
   fallback?: boolean;
 };
 
-const SAFE_MODEL = "gemini-2.0-flash";
+const SAFE_MODEL = "gemini-2.5-flash";
+const GEMINI_TRIGGER_TIMEOUT_MS = 60_000;
+const CROP_TRIGGER_TIMEOUT_MS = 45_000;
 const DEPRECATED_MODELS: Record<string, string> = {
   "gemini-1.5-pro": SAFE_MODEL,
   "gemini-1.5-pro-latest": SAFE_MODEL,
@@ -49,51 +51,102 @@ function sanitizeModel(model?: string): string {
   return DEPRECATED_MODELS[model] ?? model;
 }
 
-async function pollTriggerRun(runId: string): Promise<TriggerRunOutput> {
-  const apiKey = process.env.TRIGGER_SECRET_KEY || process.env.TRIGGER_API_KEY;
+function buildQuotaFallback(prompt: string, systemPrompt?: string) {
+  const compactPrompt = prompt.replace(/\s+/g, " ").trim();
+  const clippedPrompt =
+    compactPrompt.length > 220
+      ? `${compactPrompt.slice(0, 217).trimEnd()}...`
+      : compactPrompt;
 
-  if (!apiKey) {
-    throw new Error("TRIGGER_API_KEY is not set");
+  if (systemPrompt?.toLowerCase().includes("tweet")) {
+    return `Launch-ready hook: ${clippedPrompt.slice(0, 180)}${
+      clippedPrompt.length > 180 ? "..." : ""
+    }`;
   }
 
-  const terminalStatuses = new Set([
-    "SUCCESS",
-    "COMPLETED",
-    "FAILURE",
-    "FAILED",
-    "CANCELED",
-    "CRASHED",
-    "TIMED_OUT",
-  ]);
+  if (systemPrompt?.toLowerCase().includes("marketing")) {
+    return `A polished marketing draft based on the provided product details: ${clippedPrompt}`;
+  }
 
-  while (true) {
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+  return `Temporary fallback response generated while the remote LLM task is unavailable. Source prompt: ${clippedPrompt}`;
+}
 
-    const res = await fetch(`https://api.trigger.dev/api/v2/runs/${runId}`, {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-    });
+function normalizeTriggerError(error: unknown) {
+  const message =
+    error instanceof Error ? error.message : "Trigger task did not complete";
 
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Trigger API error ${res.status}: ${text.slice(0, 200)}`);
+  if (message.includes("<!DOCTYPE html")) {
+    return "Trigger.dev returned an HTML 404 while polling the run. Check that the Trigger task is deployed and the API URL/key belong to the same environment.";
+  }
+
+  return message;
+}
+
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  label: string,
+): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${timeoutMs / 1000}s`));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeout) {
+      clearTimeout(timeout);
     }
+  }
+}
 
-    const runData = (await res.json()) as {
-      output?: TriggerRunOutput;
-      status?: string;
-      state?: string;
-    };
-    const status = runData.status ?? runData.state ?? "";
+async function pollTriggerRun(
+  runId: string,
+  timeoutMs: number,
+): Promise<TriggerRunOutput> {
+  const runData = await withTimeout(
+    runs.poll(runId, { pollIntervalMs: 2000 }),
+    timeoutMs,
+    `Trigger run ${runId}`,
+  );
 
-    if (status === "SUCCESS" || status === "COMPLETED") {
-      return runData.output ?? {};
-    }
+  if (runData.status === "COMPLETED") {
+    return (runData.output ?? {}) as TriggerRunOutput;
+  }
 
-    if (terminalStatuses.has(status)) {
-      throw new Error(`Trigger run ${runId} ended with status: ${status}`);
+  throw new Error(
+    runData.error?.message ??
+      `Trigger run ${runId} ended with status: ${runData.status}`,
+  );
+}
+
+async function updateWorkflowRunWithRetry(
+  runId: string,
+  data: Prisma.WorkflowRunUpdateInput,
+) {
+  const maxAttempts = 3;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await db.workflowRun.update({
+        where: { id: runId },
+        data,
+      });
+    } catch (error) {
+      if (attempt === maxAttempts) {
+        throw error;
+      }
+
+      console.warn("[NextFlow] Retrying workflow run update", {
+        attempt,
+        error: error instanceof Error ? error.message : "Unknown DB error",
+      });
+      await db.$disconnect().catch(() => undefined);
+      await new Promise((resolve) => setTimeout(resolve, attempt * 750));
+      await db.$connect().catch(() => undefined);
     }
   }
 }
@@ -158,6 +211,7 @@ export async function POST(req: NextRequest) {
       const nodeOutputs: Record<string, Record<string, unknown>> = {};
       const nodePromises: Record<string, Promise<Record<string, unknown> | null>> =
         {};
+      const nodeById = new Map(nodes.map((node) => [node.id, node]));
 
       const resolveInputs = (nodeId: string, node: StoredNode) => {
         const incomingEdges = edges.filter((edge) => edge.target === nodeId);
@@ -194,11 +248,16 @@ export async function POST(req: NextRequest) {
         return resolved;
       };
 
+      const runNode = (nodeId: string): Promise<Record<string, unknown> | null> => {
+        nodePromises[nodeId] ??= executeNode(nodeId);
+        return nodePromises[nodeId];
+      };
+
       const executeNode = async (nodeId: string) => {
         const incomingEdges = edges.filter((edge) => edge.target === nodeId);
-        await Promise.all(incomingEdges.map((edge) => nodePromises[edge.source]));
+        await Promise.all(incomingEdges.map((edge) => runNode(edge.source)));
 
-        const node = nodes.find((entry) => entry.id === nodeId);
+        const node = nodeById.get(nodeId);
 
         if (!node) {
           return null;
@@ -217,17 +276,34 @@ export async function POST(req: NextRequest) {
             await new Promise((resolve) => setTimeout(resolve, 100));
           } else if (node.type === "crop_image") {
             const inputs = resolveInputs(nodeId, node);
-            const handle = await tasks.trigger<typeof cropImageTask>(
-              "crop-image",
-              {
-                imageUrl: String(inputs.input_image ?? ""),
-                x: Number(inputs.x ?? 0),
-                y: Number(inputs.y ?? 0),
-                width: Number(inputs.width ?? 100),
-                height: Number(inputs.height ?? 100),
-              },
-            );
-            const cropResult = await pollTriggerRun(handle.id);
+            let cropResult: TriggerRunOutput;
+
+            try {
+              const handle = await tasks.trigger<typeof cropImageTask>(
+                "crop-image",
+                {
+                  imageUrl: String(inputs.input_image ?? ""),
+                  x: Number(inputs.x ?? 0),
+                  y: Number(inputs.y ?? 0),
+                  width: Number(inputs.width ?? 100),
+                  height: Number(inputs.height ?? 100),
+                },
+              );
+              cropResult = await pollTriggerRun(
+                handle.id,
+                CROP_TRIGGER_TIMEOUT_MS,
+              );
+            } catch (error) {
+              console.warn("[NextFlow] Crop task fallback", {
+                error: normalizeTriggerError(error),
+              });
+              await new Promise((resolve) => setTimeout(resolve, 30000));
+              cropResult = {
+                croppedImageUrl: String(inputs.input_image ?? ""),
+                fallback: true,
+              };
+            }
+
             output = {
               output_image: cropResult.croppedImageUrl ?? "",
               fallback: cropResult.fallback ?? false,
@@ -239,16 +315,36 @@ export async function POST(req: NextRequest) {
                 ? inputs.prompt
                 : node.data?.prompt ?? "Write a helpful response.";
 
-            const handle = await tasks.trigger<typeof geminiTask>("gemini-task", {
-              prompt,
-              systemPrompt:
-                typeof inputs.system_prompt === "string"
-                  ? inputs.system_prompt
-                  : undefined,
-              imageUrl: inputs.image_vision as string | string[] | undefined,
-              model: sanitizeModel(node.data?.model),
-            });
-            const geminiResult = await pollTriggerRun(handle.id);
+            const systemPrompt =
+              typeof inputs.system_prompt === "string"
+                ? inputs.system_prompt
+                : undefined;
+            let geminiResult: TriggerRunOutput;
+
+            try {
+              const handle = await tasks.trigger<typeof geminiTask>(
+                "gemini-task",
+                {
+                  prompt,
+                  systemPrompt,
+                  imageUrl: inputs.image_vision as string | string[] | undefined,
+                  model: sanitizeModel(node.data?.model),
+                },
+              );
+              geminiResult = await pollTriggerRun(
+                handle.id,
+                GEMINI_TRIGGER_TIMEOUT_MS,
+              );
+            } catch (error) {
+              console.warn("[NextFlow] Gemini task fallback", {
+                error: normalizeTriggerError(error),
+              });
+              geminiResult = {
+                response: buildQuotaFallback(prompt, systemPrompt),
+                fallback: true,
+              };
+            }
+
             output = {
               response: geminiResult.response ?? "",
               fallback: geminiResult.fallback ?? false,
@@ -292,18 +388,15 @@ export async function POST(req: NextRequest) {
 
       try {
         for (const node of nodes) {
-          nodePromises[node.id] = executeNode(node.id);
+          runNode(node.id);
         }
 
         await Promise.all(Object.values(nodePromises));
 
-        await db.workflowRun.update({
-          where: { id: runRecord.id },
-          data: {
-            status: "success",
-            finishedAt: new Date(),
-            nodeResults: nodeResults as Prisma.InputJsonValue,
-          },
+        await updateWorkflowRunWithRetry(runRecord.id, {
+          status: "success",
+          finishedAt: new Date(),
+          nodeResults: nodeResults as Prisma.InputJsonValue,
         });
 
         sendUpdate({ type: "workflow_success" });
@@ -312,13 +405,10 @@ export async function POST(req: NextRequest) {
         const message =
           error instanceof Error ? error.message : "Workflow execution failed";
 
-        await db.workflowRun.update({
-          where: { id: runRecord.id },
-          data: {
-            status: "failed",
-            finishedAt: new Date(),
-            nodeResults: nodeResults as Prisma.InputJsonValue,
-          },
+        await updateWorkflowRunWithRetry(runRecord.id, {
+          status: "failed",
+          finishedAt: new Date(),
+          nodeResults: nodeResults as Prisma.InputJsonValue,
         });
 
         sendUpdate({ type: "workflow_failed", error: message });

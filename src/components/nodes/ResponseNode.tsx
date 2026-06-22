@@ -13,7 +13,7 @@ export function ResponseNode({
 
   return (
     <div
-      className={`min-w-[280px] rounded-[24px] border border-[#ddd7cb] bg-white shadow-[0_12px_40px_rgba(27,26,23,0.08)] ${
+      className={`w-[420px] max-w-[420px]  rounded-[24px] border border-[#ddd7cb] bg-white shadow-[0_12px_40px_rgba(27,26,23,0.08)] ${
         status === "running" ? "animate-pulse-glow" : ""
       }`}
     >
@@ -35,7 +35,7 @@ export function ResponseNode({
           <span className="text-xs font-medium text-[#171511]">Result</span>
         </div>
 
-        <div className="mt-2 min-h-[72px] max-h-48 overflow-y-auto rounded-[18px] border border-[#ece6db] bg-[#fbfaf6] p-3 text-xs text-[#2f2a24] break-words">
+        <div className="mt-2 min-h-[72px] max-h-96 overflow-y-auto rounded-[18px] border border-[#ece6db] bg-[#fbfaf6] p-3 text-xs  text-[#2f2a24] whitespace-pre-wrap break-words">
           {result || (
             <span className="italic text-[#8b8276]">
               Workflow output will appear here...

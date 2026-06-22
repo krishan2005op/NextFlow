@@ -29,6 +29,12 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+nextflow-dev.log
+trigger-dev.log
+trigger-worker.log
+
+# trigger.dev
+/.trigger/
 
 # env files (can opt-in for committing if needed)
 .env*

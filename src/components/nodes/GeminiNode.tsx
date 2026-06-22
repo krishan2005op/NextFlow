@@ -20,7 +20,7 @@ export function GeminiNode({
   const { updateNode } = useWorkflowStore();
   const [showSettings, setShowSettings] = useState(false);
   const status = data.status || "idle";
-  const model = data.model || "gemini-2.0-flash";
+  const model = data.model || "gemini-2.5-flash";
   const response = data.response || "";
   const fallback = data.fallback || false;
 
@@ -40,9 +40,8 @@ export function GeminiNode({
             onChange={(event) => updateNode(id, { model: event.target.value })}
             className="nodrag rounded px-1 text-sm font-semibold text-[#171511] outline-none focus:ring-1 focus:ring-brand-purple"
           >
-            <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-            <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash Lite</option>
-            <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+            <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</option>
           </select>
         </div>
       </div>
@@ -121,15 +120,11 @@ export function GeminiNode({
           ) : null}
         </div>
 
-        {response ? (
-          <div className="max-h-32 overflow-y-auto rounded-[18px] border border-[#ece6db] bg-[#fbfaf6] p-3 text-xs text-[#2f2a24]">
-            {response}
-          </div>
-        ) : null}
+        
 
         {fallback ? (
           <div className="text-[11px] font-medium text-[#9a6b2f]">
-            Fallback response used because the Gemini quota is currently unavailable.
+            Fallback response used because the remote Gemini task is unavailable.
           </div>
         ) : null}
       </div>

@@ -40,55 +40,66 @@ export function WorkflowHeader({
         return;
       }
 
+      const handleStreamLine = (line: string) => {
+        if (!line.startsWith("data: ")) {
+          return;
+        }
+
+        const data = JSON.parse(line.replace("data: ", "")) as {
+          error?: string;
+          nodeId?: string;
+          output?: Record<string, unknown>;
+          type: string;
+        };
+
+        if (!data.nodeId) {
+          if (
+            data.type === "workflow_success" ||
+            data.type === "workflow_failed"
+          ) {
+            window.dispatchEvent(new Event("refresh-history"));
+          }
+          return;
+        }
+
+        if (data.type === "node_start") {
+          setRunStatus(data.nodeId, "running");
+        }
+
+        if (data.type === "node_success") {
+          setRunStatus(data.nodeId, "success");
+          if (data.output) {
+            setNodeOutput(data.nodeId, data.output);
+          }
+        }
+
+        if (data.type === "node_failed") {
+          setRunStatus(data.nodeId, "failed");
+          if (data.error) {
+            setNodeOutput(data.nodeId, { error: data.error });
+          }
+        }
+      };
+
+      let buffer = "";
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) {
           break;
         }
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split("\n\n");
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() ?? "";
 
         for (const line of lines) {
-          if (!line.startsWith("data: ")) {
-            continue;
-          }
-
-          const data = JSON.parse(line.replace("data: ", "")) as {
-            error?: string;
-            nodeId?: string;
-            output?: Record<string, unknown>;
-            type: string;
-          };
-
-          if (!data.nodeId) {
-            if (
-              data.type === "workflow_success" ||
-              data.type === "workflow_failed"
-            ) {
-              window.dispatchEvent(new Event("refresh-history"));
-            }
-            continue;
-          }
-
-          if (data.type === "node_start") {
-            setRunStatus(data.nodeId, "running");
-          }
-
-          if (data.type === "node_success") {
-            setRunStatus(data.nodeId, "success");
-            if (data.output) {
-              setNodeOutput(data.nodeId, data.output);
-            }
-          }
-
-          if (data.type === "node_failed") {
-            setRunStatus(data.nodeId, "failed");
-            if (data.error) {
-              setNodeOutput(data.nodeId, { error: data.error });
-            }
-          }
+          handleStreamLine(line);
         }
+      }
+
+      if (buffer.trim()) {
+        handleStreamLine(buffer.trim());
       }
     } catch (error) {
       console.error(error);

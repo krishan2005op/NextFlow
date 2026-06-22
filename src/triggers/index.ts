@@ -143,7 +143,7 @@ export const geminiTask = task({
     try {
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({
-        model: payload.model || "gemini-2.0-flash",
+        model: payload.model || "gemini-2.5-flash",
         systemInstruction: payload.systemPrompt,
       });
 
@@ -198,22 +198,37 @@ export const geminiTask = task({
         response: result.response.text(),
         fallback: false,
       };
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message.toLowerCase() : "unknown";
-      const isQuotaIssue =
-        message.includes("quota") ||
-        message.includes("429") ||
-        message.includes("resource_exhausted");
+    } catch (error: any) {
+  console.error("========== GEMINI ERROR ==========");
 
-      if (!isQuotaIssue) {
-        throw error;
-      }
+  console.error(error);
 
-      return {
-        response: buildQuotaFallback(payload.prompt, payload.systemPrompt),
-        fallback: true,
-      };
-    }
+  console.error("Message:", error?.message);
+
+  console.error("Status:", error?.status);
+
+  console.error("Response:", error?.response);
+
+  console.error("==================================");
+
+  throw error;
+}
+    // catch (error) {
+    //   const message =
+    //     error instanceof Error ? error.message.toLowerCase() : "unknown";
+    //   const isQuotaIssue =
+    //     message.includes("quota") ||
+    //     message.includes("429") ||
+    //     message.includes("resource_exhausted");
+
+    //   if (!isQuotaIssue) {
+    //     throw error;
+    //   }
+
+    //   return {
+    //     response: buildQuotaFallback(payload.prompt, payload.systemPrompt),
+    //     fallback: true,
+    //   };
+    // }
   },
 });
