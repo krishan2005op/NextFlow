@@ -1,5 +1,13 @@
-export function topologicalSort(nodes: any[], edges: any[]) {
-  // Build adjacency list and indegree map
+type DagNode = {
+  id: string;
+};
+
+type DagEdge = {
+  source: string;
+  target: string;
+};
+
+export function topologicalSort(nodes: DagNode[], edges: DagEdge[]) {
   const adjList = new Map<string, string[]>();
   const inDegree = new Map<string, number>();
 
@@ -20,7 +28,6 @@ export function topologicalSort(nodes: any[], edges: any[]) {
   const levels: string[][] = [];
   let currentLevel: string[] = [];
 
-  // Find all nodes with 0 in-degree
   for (const [nodeId, degree] of inDegree.entries()) {
     if (degree === 0) {
       currentLevel.push(nodeId);
@@ -45,7 +52,6 @@ export function topologicalSort(nodes: any[], edges: any[]) {
     currentLevel = nextLevel;
   }
 
-  // Check for cycles
   let sortedCount = 0;
   levels.forEach(level => {
     sortedCount += level.length;

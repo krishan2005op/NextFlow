@@ -1,15 +1,25 @@
 "use client";
 
 import { useState } from "react";
+import { SignOutButton, UserButton } from "@clerk/nextjs";
+import { Download, LogOut, Play, Upload } from "lucide-react";
 import { useWorkflowStore } from "@/store/workflow-store";
-import { Play, Download, Upload } from "lucide-react";
 
-export function WorkflowHeader({ workflowId, workflowName }: { workflowId: string, workflowName: string }) {
+export function WorkflowHeader({
+  workflowId,
+  workflowName,
+}: {
+  workflowId: string;
+  workflowName: string;
+}) {
   const [running, setRunning] = useState(false);
-  const { setRunStatus } = useWorkflowStore();
+  const { setNodeOutput, setRunStatus } = useWorkflowStore();
 
   const handleRun = async () => {
-    if (running) return;
+    if (running) {
+      return;
+    }
+
     setRunning(true);
 
     try {
@@ -23,32 +33,59 @@ export function WorkflowHeader({ workflowId, workflowName }: { workflowId: strin
         throw new Error("Failed to start run");
       }
 
-      // Read SSE stream
       const reader = res.body?.getReader();
       const decoder = new TextDecoder();
 
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+      if (!reader) {
+        return;
+      }
 
-          const chunk = decoder.decode(value);
-          const lines = chunk.split("\n\n");
-          
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              const data = JSON.parse(line.replace("data: ", ""));
-              
-              if (data.type === "node_start") {
-                setRunStatus(data.nodeId, "running");
-              } else if (data.type === "node_success") {
-                setRunStatus(data.nodeId, "success");
-              } else if (data.type === "node_failed") {
-                setRunStatus(data.nodeId, "failed");
-              } else if (data.type === "workflow_success" || data.type === "workflow_failed") {
-                // Done
-                window.dispatchEvent(new Event('refresh-history'));
-              }
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          break;
+        }
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split("\n\n");
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) {
+            continue;
+          }
+
+          const data = JSON.parse(line.replace("data: ", "")) as {
+            error?: string;
+            nodeId?: string;
+            output?: Record<string, unknown>;
+            type: string;
+          };
+
+          if (!data.nodeId) {
+            if (
+              data.type === "workflow_success" ||
+              data.type === "workflow_failed"
+            ) {
+              window.dispatchEvent(new Event("refresh-history"));
+            }
+            continue;
+          }
+
+          if (data.type === "node_start") {
+            setRunStatus(data.nodeId, "running");
+          }
+
+          if (data.type === "node_success") {
+            setRunStatus(data.nodeId, "success");
+            if (data.output) {
+              setNodeOutput(data.nodeId, data.output);
+            }
+          }
+
+          if (data.type === "node_failed") {
+            setRunStatus(data.nodeId, "failed");
+            if (data.error) {
+              setNodeOutput(data.nodeId, { error: data.error });
             }
           }
         }
@@ -57,71 +94,108 @@ export function WorkflowHeader({ workflowId, workflowName }: { workflowId: strin
       console.error(error);
     } finally {
       setRunning(false);
-      // reset statuses after a bit
-      setTimeout(() => {
-        // We might want to keep the success/failure state visible for a bit
-      }, 5000);
     }
   };
 
   const handleExport = () => {
     const { nodes, edges } = useWorkflowStore.getState();
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ nodes, edges }, null, 2));
-    const dlAnchorElem = document.createElement('a');
-    dlAnchorElem.setAttribute("href", dataStr);
-    dlAnchorElem.setAttribute("download", `workflow-${workflowId}.json`);
-    dlAnchorElem.click();
+    const dataStr =
+      "data:text/json;charset=utf-8," +
+      encodeURIComponent(JSON.stringify({ nodes, edges }, null, 2));
+    const anchor = document.createElement("a");
+    anchor.setAttribute("href", dataStr);
+    anchor.setAttribute("download", `workflow-${workflowId}.json`);
+    anchor.click();
   };
 
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = (loadEvent) => {
       try {
-        const json = JSON.parse(event.target?.result as string);
-        if (json.nodes && json.edges) {
-          const { setNodes, setEdges } = useWorkflowStore.getState();
-          setNodes(json.nodes);
-          setEdges(json.edges);
+        const json = JSON.parse(loadEvent.target?.result as string) as {
+          edges?: unknown[];
+          nodes?: unknown[];
+        };
+        if (Array.isArray(json.nodes) && Array.isArray(json.edges)) {
+          const { resetWorkflow } = useWorkflowStore.getState();
+          resetWorkflow(json.nodes as never[], json.edges as never[]);
         } else {
           alert("Invalid workflow JSON format");
         }
-      } catch (err) {
+      } catch {
         alert("Failed to parse JSON");
       }
     };
     reader.readAsText(file);
-    e.target.value = ''; // Reset input
+    event.target.value = "";
   };
 
   return (
-    <header className="h-14 border-b border-[#2A2A2A] flex items-center justify-between px-4 bg-[#1A1A1A] shrink-0 z-10">
+    <header className="z-10 flex h-16 shrink-0 items-center justify-between border-b border-[#e3ddd1] bg-[#f8f6f1] px-5">
       <div className="flex items-center gap-4">
-        <a href="/dashboard" className="text-gray-400 hover:text-white transition-colors text-sm">
-          ← Dashboard
+        <a
+          href="/dashboard"
+          className="rounded-full border border-[#ddd7cb] bg-white px-3 py-1.5 text-sm font-medium text-[#625b52] transition-colors hover:border-[#c9c0b2] hover:text-[#171511]"
+        >
+          Back
         </a>
-        <h1 className="font-medium text-sm text-white">{workflowName}</h1>
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#90877a]">
+            Workflow
+          </div>
+          <h1 className="text-sm font-semibold text-[#171511]">{workflowName}</h1>
+        </div>
       </div>
+
       <div className="flex items-center gap-3">
-        <button onClick={handleExport} className="px-3 py-1.5 text-sm bg-[#2A2A2A] hover:bg-[#3A3A3A] text-white rounded transition-colors flex items-center gap-2">
-          <Download className="w-4 h-4" /> Export JSON
+        <button
+          onClick={handleExport}
+          className="flex items-center gap-2 rounded-full border border-[#ddd7cb] bg-white px-3 py-2 text-sm font-medium text-[#171511] transition-colors hover:bg-[#f3efe7]"
+        >
+          <Download className="h-4 w-4" />
+          Export
         </button>
         <div className="relative">
-          <button className="px-3 py-1.5 text-sm bg-[#2A2A2A] hover:bg-[#3A3A3A] text-white rounded transition-colors flex items-center gap-2" onClick={() => document.getElementById('import-upload')?.click()}>
-            <Upload className="w-4 h-4" /> Import JSON
+          <button
+            className="flex items-center gap-2 rounded-full border border-[#ddd7cb] bg-white px-3 py-2 text-sm font-medium text-[#171511] transition-colors hover:bg-[#f3efe7]"
+            onClick={() => document.getElementById("import-upload")?.click()}
+          >
+            <Upload className="h-4 w-4" />
+            Import
           </button>
-          <input id="import-upload" type="file" accept=".json" onChange={handleImport} className="hidden" />
+          <input
+            id="import-upload"
+            type="file"
+            accept=".json"
+            onChange={handleImport}
+            className="hidden"
+          />
         </div>
-        <button 
+        <button
           onClick={handleRun}
           disabled={running}
-          className="px-4 py-1.5 text-sm bg-brand-purple hover:bg-[#6D28D9] text-white rounded font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+          className="flex items-center gap-2 rounded-full bg-[#111111] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#23201b] disabled:opacity-50"
         >
-          {running ? <span className="animate-spin text-xl leading-none">⟳</span> : <Play className="w-4 h-4" />}
+          <Play className="h-4 w-4" />
           {running ? "Running..." : "Run Workflow"}
         </button>
+        <UserButton
+          appearance={{
+            elements: {
+              userButtonAvatarBox: "h-9 w-9",
+            },
+          }}
+        />
+        <SignOutButton redirectUrl="/sign-in">
+          <button className="flex h-9 w-9 items-center justify-center rounded-full border border-[#ddd7cb] bg-white text-[#625b52] transition-colors hover:bg-[#f3efe7] hover:text-[#171511]">
+            <LogOut className="h-4 w-4" />
+          </button>
+        </SignOutButton>
       </div>
     </header>
   );

@@ -2,10 +2,26 @@
 
 import { useState } from "react";
 import { Handle, Position } from "@xyflow/react";
-import { Plus, X, Upload, Image as ImageIcon } from "lucide-react";
+import { Plus, RefreshCcw, Trash2, Upload, X } from "lucide-react";
 import { useWorkflowStore } from "@/store/workflow-store";
 
-export function RequestInputsNode({ id, data }: any) {
+type RequestField = {
+  id: string;
+  name: string;
+  type: "text_field" | "image_field";
+  value: string;
+  preview?: string;
+  uploading?: boolean;
+  error?: string;
+};
+
+export function RequestInputsNode({
+  id,
+  data,
+}: {
+  id: string;
+  data: { fields?: RequestField[]; status?: string };
+}) {
   const { updateNode } = useWorkflowStore();
   const [showPicker, setShowPicker] = useState(false);
 
@@ -13,33 +29,44 @@ export function RequestInputsNode({ id, data }: any) {
   const status = data.status || "idle";
 
   const addField = (type: "text_field" | "image_field") => {
-    const newField = {
+    const count = fields.filter((field) => field.type === type).length + 1;
+    const newField: RequestField = {
       id: `${type}_${Date.now()}`,
-      name: type,
+      name: count === 1 ? type : `${type}_${count}`,
       type,
       value: "",
+      preview: "",
     };
+
     updateNode(id, { fields: [...fields, newField] });
     setShowPicker(false);
   };
 
   const removeField = (fieldId: string) => {
-    updateNode(id, { fields: fields.filter((f: any) => f.id !== fieldId) });
-  };
-
-  const updateField = (fieldId: string, updates: any) => {
     updateNode(id, {
-      fields: fields.map((f: any) => (f.id === fieldId ? { ...f, ...updates } : f)),
+      fields: fields.filter((field) => field.id !== fieldId),
     });
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, fieldId: string) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const updateField = (fieldId: string, updates: Partial<RequestField>) => {
+    updateNode(id, {
+      fields: fields.map((field) =>
+        field.id === fieldId ? { ...field, ...updates } : field,
+      ),
+    });
+  };
 
-    // Simple preview immediately
-    const objectUrl = URL.createObjectURL(file);
-    updateField(fieldId, { preview: objectUrl, uploading: true });
+  const handleImageUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+    fieldId: string,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    const preview = URL.createObjectURL(file);
+    updateField(fieldId, { preview, uploading: true, error: undefined });
 
     try {
       const formData = new FormData();
@@ -47,11 +74,10 @@ export function RequestInputsNode({ id, data }: any) {
         "params",
         JSON.stringify({
           auth: { key: process.env.NEXT_PUBLIC_TRANSLOADIT_KEY },
-          template_id: "", // If you have a specific template, add it. Otherwise, standard upload
           steps: {
             import: { robot: "/upload/handle" },
           },
-        })
+        }),
       );
       formData.append("file", file);
 
@@ -59,123 +85,178 @@ export function RequestInputsNode({ id, data }: any) {
         method: "POST",
         body: formData,
       });
+      const result = (await res.json()) as {
+        uploads?: Array<{ ssl_url?: string }>;
+        results?: { import?: Array<{ ssl_url?: string }> };
+      };
+      const uploadedUrl =
+        result.uploads?.[0]?.ssl_url || result.results?.import?.[0]?.ssl_url;
 
-      const data = await res.json();
-      const uploadedUrl = data.uploads?.[0]?.ssl_url || data.results?.import?.[0]?.ssl_url;
-
-      if (uploadedUrl) {
-        updateField(fieldId, { value: uploadedUrl, uploading: false });
-      } else {
-        updateField(fieldId, { uploading: false, error: "Upload failed" });
-      }
+      updateField(fieldId, {
+        value: uploadedUrl || preview,
+        preview,
+        uploading: false,
+        error: uploadedUrl ? undefined : "Upload fallback preview in use",
+      });
     } catch (error) {
       console.error("Transloadit upload error", error);
-      updateField(fieldId, { uploading: false, error: "Upload failed" });
+      updateField(fieldId, {
+        value: preview,
+        preview,
+        uploading: false,
+        error: "Upload failed. Using local preview.",
+      });
     }
+
+    event.target.value = "";
   };
 
   return (
-    <div className={`bg-canvas-node border border-canvas-border rounded-lg min-w-[300px] shadow-lg ${status === "running" ? "animate-pulse-glow" : ""}`}>
-      <div className="flex items-center justify-between p-3 border-b border-canvas-border">
-        <div className="font-medium text-white flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-brand-purple"></div>
-          Request Inputs
+    <div
+      className={`min-w-[340px] rounded-[24px] border border-[#ddd7cb] bg-white shadow-[0_12px_40px_rgba(27,26,23,0.08)] ${
+        status === "running" ? "animate-pulse-glow" : ""
+      }`}
+    >
+      <div className="flex items-center justify-between border-b border-[#ece6db] px-4 py-3">
+        <div className="flex items-center gap-2">
+          <div className="h-2.5 w-2.5 rounded-full bg-brand-purple" />
+          <div className="text-sm font-semibold text-[#171511]">Request Inputs</div>
         </div>
         <div className="relative">
           {showPicker && (
-            <div className="absolute top-full mt-1 right-0 bg-[#2A2A2A] border border-[#3A3A3A] rounded shadow-xl p-1 z-10 w-32 flex flex-col gap-1">
+            <div className="absolute right-0 top-full z-10 mt-2 flex w-36 flex-col gap-1 rounded-2xl border border-[#e3ddd1] bg-white p-1 shadow-xl">
               <button
                 onClick={() => addField("text_field")}
-                className="text-left px-2 py-1.5 text-xs text-gray-300 hover:bg-[#3A3A3A] hover:text-white rounded"
+                className="rounded-xl px-3 py-2 text-left text-xs font-medium text-[#4c463f] hover:bg-[#f5f1e8]"
               >
                 Text Field
               </button>
               <button
                 onClick={() => addField("image_field")}
-                className="text-left px-2 py-1.5 text-xs text-gray-300 hover:bg-[#3A3A3A] hover:text-white rounded"
+                className="rounded-xl px-3 py-2 text-left text-xs font-medium text-[#4c463f] hover:bg-[#f5f1e8]"
               >
                 Image Field
               </button>
             </div>
           )}
           <button
-            onClick={() => setShowPicker(!showPicker)}
-            className="p-1 hover:bg-[#2A2A2A] rounded text-gray-400 hover:text-white"
+            onClick={() => setShowPicker((current) => !current)}
+            className="rounded-full p-1.5 text-[#746c61] transition-colors hover:bg-[#f3eee5] hover:text-[#171511]"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="h-4 w-4" />
           </button>
         </div>
       </div>
 
-      <div className="p-3 flex flex-col gap-3">
-        {fields.length === 0 ? (
-          <div className="text-xs text-gray-500 italic">No inputs added yet.</div>
-        ) : (
-          fields.map((field: any, index: number) => (
-            <div key={field.id} className="relative bg-[#0F0F0F] border border-[#2A2A2A] rounded p-2">
-              <div className="flex items-center justify-between mb-2">
-                <input
-                  type="text"
-                  value={field.name}
-                  onChange={(e) => updateField(field.id, { name: e.target.value })}
-                  className="bg-transparent text-xs text-gray-300 font-medium outline-none border-b border-transparent focus:border-brand-purple w-2/3"
-                />
-                <button
-                  onClick={() => removeField(field.id)}
-                  className="text-gray-500 hover:text-red-400 transition-colors"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
-
-              {field.type === "text_field" ? (
-                <textarea
-                  value={field.value}
-                  onChange={(e) => updateField(field.id, { value: e.target.value })}
-                  className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded text-xs text-gray-300 p-2 min-h-[60px] resize-none focus:outline-none focus:border-brand-purple nodrag"
-                  placeholder="Enter text..."
-                />
-              ) : (
-                <div className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded p-2 flex flex-col items-center justify-center min-h-[80px] relative">
-                  {field.preview || field.value ? (
-                    <div className="relative w-full h-full flex items-center justify-center">
-                      <img
-                        src={field.value || field.preview}
-                        alt="Preview"
-                        className="max-h-[100px] object-contain rounded"
-                      />
-                      {field.uploading && (
-                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded">
-                          <div className="text-xs text-white">Uploading...</div>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <>
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp,image/gif"
-                        className="absolute inset-0 opacity-0 cursor-pointer"
-                        onChange={(e) => handleImageUpload(e, field.id)}
-                      />
-                      <Upload className="w-5 h-5 text-gray-500 mb-1" />
-                      <span className="text-xs text-gray-500">Upload Image</span>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {/* Individual Output Handle for each field */}
-              <Handle
-                type="source"
-                position={Position.Right}
-                id={field.id}
-                className="w-3 h-3 bg-brand-purple !border-2 !border-[#0F0F0F] right-[-14px]"
-                style={{ top: '50%' }}
+      <div className="flex flex-col gap-3 p-4">
+        {fields.map((field) => (
+          <div
+            key={field.id}
+            className="relative rounded-[20px] border border-[#ece6db] bg-[#fbf9f4] p-3"
+          >
+            <div className="mb-2 flex items-center justify-between">
+              <input
+                type="text"
+                value={field.name}
+                onChange={(event) =>
+                  updateField(field.id, { name: event.target.value })
+                }
+                className="w-2/3 border-b border-transparent bg-transparent text-xs font-semibold text-[#3f3932] outline-none focus:border-brand-purple"
               />
+              <button
+                onClick={() => removeField(field.id)}
+                className="rounded-full p-1 text-[#92897d] transition-colors hover:bg-[#efe8dc] hover:text-[#8b2d2d]"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
             </div>
-          ))
-        )}
+
+            {field.type === "text_field" ? (
+              <textarea
+                value={field.value}
+                onChange={(event) =>
+                  updateField(field.id, { value: event.target.value })
+                }
+                className="nodrag min-h-[88px] w-full resize-none rounded-2xl border border-[#e8e1d5] bg-white px-3 py-2 text-xs text-[#3f3932] outline-none focus:border-brand-purple"
+                placeholder="Enter text..."
+              />
+            ) : (
+              <div className="rounded-[18px] border border-[#e8e1d5] bg-white p-3">
+                <input
+                  id={`${field.id}-upload`}
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  onChange={(event) => handleImageUpload(event, field.id)}
+                />
+                {field.preview || field.value ? (
+                  <div className="flex flex-col gap-3">
+                    <div className="relative overflow-hidden rounded-2xl border border-[#efe8dc] bg-[#faf7f0]">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={field.preview || field.value}
+                        alt={field.name}
+                        className="h-[120px] w-full object-cover"
+                      />
+                      {field.uploading ? (
+                        <div className="absolute inset-0 flex items-center justify-center bg-white/70 text-xs font-medium text-[#4c463f]">
+                          Uploading...
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() =>
+                          document.getElementById(`${field.id}-upload`)?.click()
+                        }
+                        className="flex items-center gap-2 rounded-full bg-[#111111] px-3 py-1.5 text-xs font-medium text-white"
+                      >
+                        <RefreshCcw className="h-3.5 w-3.5" />
+                        Change
+                      </button>
+                      <button
+                        onClick={() =>
+                          updateField(field.id, {
+                            value: "",
+                            preview: "",
+                            error: undefined,
+                          })
+                        }
+                        className="flex items-center gap-2 rounded-full border border-[#e2dbcf] px-3 py-1.5 text-xs font-medium text-[#5f574d]"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Remove
+                      </button>
+                    </div>
+                    {field.error ? (
+                      <div className="text-[11px] text-[#8f6740]">{field.error}</div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <button
+                    onClick={() =>
+                      document.getElementById(`${field.id}-upload`)?.click()
+                    }
+                    className="flex min-h-[120px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-[#d7d0c2] bg-[#fbf9f4] text-[#7a7266]"
+                  >
+                    <div className="rounded-full bg-white p-2 shadow-sm">
+                      <Upload className="h-4 w-4" />
+                    </div>
+                    <div className="text-xs font-medium">Upload or replace image</div>
+                  </button>
+                )}
+              </div>
+            )}
+
+            <Handle
+              type="source"
+              position={Position.Right}
+              id={field.id}
+              className="!right-[-14px] !h-3 !w-3 !border-2 !border-[#fbf9f4] bg-brand-purple"
+              style={{ top: "50%" }}
+            />
+          </div>
+        ))}
       </div>
     </div>
   );

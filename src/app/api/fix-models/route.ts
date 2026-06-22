@@ -1,6 +1,16 @@
-import { NextRequest } from "next/server";
 import { auth } from "@clerk/nextjs/server";
+import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
+import { parseStoredJson } from "@/lib/workflow-json";
+
+type ModelNode = {
+  type?: string;
+  data?: {
+    model?: string;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+};
 
 const DEPRECATED_MODELS: Record<string, string> = {
   "gemini-1.5-pro": "gemini-2.0-flash",
@@ -10,8 +20,7 @@ const DEPRECATED_MODELS: Record<string, string> = {
   "gemini-1.0-pro": "gemini-2.0-flash",
 };
 
-// GET /api/fix-models - patches all workflows in DB to use current models
-export async function GET(req: NextRequest) {
+export async function GET() {
   const { userId } = await auth();
   if (!userId) return new Response("Unauthorized", { status: 401 });
 
@@ -23,10 +32,10 @@ export async function GET(req: NextRequest) {
   let patchedCount = 0;
 
   for (const wf of workflows) {
-    const nodes = JSON.parse(wf.nodes as string);
+    const nodes = parseStoredJson<ModelNode[]>(wf.nodes, []);
     let changed = false;
 
-    const updatedNodes = nodes.map((node: any) => {
+    const updatedNodes = nodes.map((node) => {
       if (node.type === "gemini" && node.data?.model) {
         const replacement = DEPRECATED_MODELS[node.data.model];
         if (replacement) {
@@ -40,7 +49,7 @@ export async function GET(req: NextRequest) {
     if (changed) {
       await db.workflow.update({
         where: { id: wf.id },
-        data: { nodes: JSON.stringify(updatedNodes) },
+        data: { nodes: updatedNodes as unknown as Prisma.InputJsonValue },
       });
       patchedCount++;
     }

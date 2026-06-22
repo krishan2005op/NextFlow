@@ -1,13 +1,37 @@
 import { NextRequest } from "next/server";
 import { auth } from "@clerk/nextjs/server";
+import { tasks } from "@trigger.dev/sdk/v3";
+import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { topologicalSort } from "@/lib/dag";
-import { tasks } from "@trigger.dev/sdk/v3";
+import { parseStoredJson } from "@/lib/workflow-json";
 import { cropImageTask, geminiTask } from "@/triggers";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import axios from "axios";
 
-// Map any deprecated/invalid model names to a working one
+type StoredNode = {
+  id: string;
+  type: string;
+  data?: {
+    fields?: Array<{ id: string; value: string }>;
+    inputs?: Record<string, unknown>;
+    model?: string;
+    prompt?: string;
+  };
+};
+
+type StoredEdge = {
+  id: string;
+  source: string;
+  target: string;
+  sourceHandle?: string;
+  targetHandle?: string;
+};
+
+type TriggerRunOutput = {
+  croppedImageUrl?: string;
+  response?: string;
+  fallback?: boolean;
+};
+
 const SAFE_MODEL = "gemini-2.0-flash";
 const DEPRECATED_MODELS: Record<string, string> = {
   "gemini-1.5-pro": SAFE_MODEL,
@@ -18,21 +42,38 @@ const DEPRECATED_MODELS: Record<string, string> = {
 };
 
 function sanitizeModel(model?: string): string {
-  if (!model) return SAFE_MODEL;
+  if (!model) {
+    return SAFE_MODEL;
+  }
+
   return DEPRECATED_MODELS[model] ?? model;
 }
 
-// Helper: poll a Trigger.dev run until it completes
-async function pollTriggerRun(runId: string): Promise<any> {
+async function pollTriggerRun(runId: string): Promise<TriggerRunOutput> {
   const apiKey = process.env.TRIGGER_SECRET_KEY || process.env.TRIGGER_API_KEY;
-  if (!apiKey) throw new Error("TRIGGER_SECRET_KEY is not set");
 
-  const terminalStatuses = new Set(["SUCCESS", "COMPLETED", "FAILURE", "FAILED", "CANCELED", "CRASHED", "TIMED_OUT"]);
+  if (!apiKey) {
+    throw new Error("TRIGGER_API_KEY is not set");
+  }
+
+  const terminalStatuses = new Set([
+    "SUCCESS",
+    "COMPLETED",
+    "FAILURE",
+    "FAILED",
+    "CANCELED",
+    "CRASHED",
+    "TIMED_OUT",
+  ]);
 
   while (true) {
-    await new Promise(r => setTimeout(r, 2000));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
     const res = await fetch(`https://api.trigger.dev/api/v2/runs/${runId}`, {
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
     });
 
     if (!res.ok) {
@@ -40,12 +81,17 @@ async function pollTriggerRun(runId: string): Promise<any> {
       throw new Error(`Trigger API error ${res.status}: ${text.slice(0, 200)}`);
     }
 
-    const runData = await res.json();
-    const status: string = runData.status ?? runData.state ?? "";
+    const runData = (await res.json()) as {
+      output?: TriggerRunOutput;
+      status?: string;
+      state?: string;
+    };
+    const status = runData.status ?? runData.state ?? "";
 
     if (status === "SUCCESS" || status === "COMPLETED") {
-      return runData.output;
+      return runData.output ?? {};
     }
+
     if (terminalStatuses.has(status)) {
       throw new Error(`Trigger run ${runId} ended with status: ${status}`);
     }
@@ -54,14 +100,23 @@ async function pollTriggerRun(runId: string): Promise<any> {
 
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
+
   if (!userId) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+    });
   }
 
-  const { workflowId, scope = "full" } = await req.json();
+  const { workflowId, scope = "full" } = (await req.json()) as {
+    workflowId: string;
+    scope?: string;
+  };
 
   const dbUser = await db.user.findUnique({ where: { clerkId: userId } });
-  if (!dbUser) return new Response("Unauthorized", { status: 401 });
+
+  if (!dbUser) {
+    return new Response("Unauthorized", { status: 401 });
+  }
 
   const workflow = await db.workflow.findUnique({
     where: { id: workflowId, userId: dbUser.id },
@@ -71,179 +126,175 @@ export async function POST(req: NextRequest) {
     return new Response("Workflow not found", { status: 404 });
   }
 
-  const nodes = JSON.parse(workflow.nodes as string);
-  const edges = JSON.parse(workflow.edges as string);
+  const nodes = parseStoredJson<StoredNode[]>(workflow.nodes, []);
+  const edges = parseStoredJson<StoredEdge[]>(workflow.edges, []);
 
   try {
-    topologicalSort(nodes, edges); // just to validate DAG
-  } catch (error) {
-    return new Response(JSON.stringify({ error: "Cycle detected in DAG" }), { status: 400 });
+    topologicalSort(nodes, edges);
+  } catch {
+    return new Response(JSON.stringify({ error: "Cycle detected in DAG" }), {
+      status: 400,
+    });
   }
 
-  // Create a DB run record
   const runRecord = await db.workflowRun.create({
     data: {
       workflowId,
       status: "running",
       scope,
-      nodeResults: JSON.stringify([]),
+      nodeResults: [] as Prisma.InputJsonValue,
     },
   });
 
-  // Setup streaming response
   const encoder = new TextEncoder();
+
   const stream = new ReadableStream({
     async start(controller) {
-      const sendUpdate = (data: any) => {
+      const sendUpdate = (data: Record<string, unknown>) => {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
       };
 
-      const nodeResults: any[] = [];
-      const nodeOutputs: Record<string, any> = {};
-      const nodePromises: Record<string, Promise<any>> = {};
+      const nodeResults: Array<Record<string, unknown>> = [];
+      const nodeOutputs: Record<string, Record<string, unknown>> = {};
+      const nodePromises: Record<string, Promise<Record<string, unknown> | null>> =
+        {};
 
-      const resolveInputs = (nodeId: string, node: any) => {
-        const incomingEdges = edges.filter((e: any) => e.target === nodeId);
-        const resolved: Record<string, any> = {};
+      const resolveInputs = (nodeId: string, node: StoredNode) => {
+        const incomingEdges = edges.filter((edge) => edge.target === nodeId);
+        const resolved: Record<string, unknown> = {
+          ...(node.data?.inputs ?? {}),
+        };
 
-        if (node.data?.inputs) {
-          Object.assign(resolved, node.data.inputs);
+        for (const edge of incomingEdges) {
+          const sourceOutput = nodeOutputs[edge.source];
+
+          if (!sourceOutput) {
+            continue;
+          }
+
+          if (edge.targetHandle === "image_vision") {
+            const existing = Array.isArray(resolved.image_vision)
+              ? resolved.image_vision
+              : [];
+            resolved.image_vision = [
+              ...existing,
+              sourceOutput[edge.sourceHandle ?? "output"],
+            ];
+            continue;
+          }
+
+          if (edge.targetHandle) {
+            resolved[edge.targetHandle] =
+              sourceOutput[edge.sourceHandle ?? "output"];
+          } else {
+            resolved.input = sourceOutput.output;
+          }
         }
 
-        incomingEdges.forEach((edge: any) => {
-          const sourceOutput = nodeOutputs[edge.source];
-          if (sourceOutput) {
-            if (edge.targetHandle) {
-               if (edge.targetHandle === "image_vision") {
-                  if (!resolved[edge.targetHandle]) resolved[edge.targetHandle] = [];
-                  resolved[edge.targetHandle].push(sourceOutput[edge.sourceHandle || 'output']);
-               } else {
-                  resolved[edge.targetHandle] = sourceOutput[edge.sourceHandle || 'output'];
-               }
-            } else {
-               resolved['input'] = sourceOutput['output'];
-            }
-          }
-        });
-        
         return resolved;
       };
 
       const executeNode = async (nodeId: string) => {
-        // Wait for all immediate upstream dependencies to finish
-        const incomingEdges = edges.filter((e: any) => e.target === nodeId);
-        const depPromises = incomingEdges.map((e: any) => nodePromises[e.source]);
-        await Promise.all(depPromises);
+        const incomingEdges = edges.filter((edge) => edge.target === nodeId);
+        await Promise.all(incomingEdges.map((edge) => nodePromises[edge.source]));
 
-        const node = nodes.find((n: any) => n.id === nodeId);
-        if (!node) return null;
+        const node = nodes.find((entry) => entry.id === nodeId);
+
+        if (!node) {
+          return null;
+        }
 
         const startedAt = new Date().toISOString();
         sendUpdate({ type: "node_start", nodeId });
 
-        let output: any = null;
         try {
+          let output: Record<string, unknown> = {};
+
           if (node.type === "request_inputs") {
-            output = {};
-            node.data.fields?.forEach((f: any) => {
-              output[f.id] = f.value;
-            });
-            await new Promise((r) => setTimeout(r, 100));
-          } 
-          else if (node.type === "crop_image") {
+            for (const field of node.data?.fields ?? []) {
+              output[field.id] = field.value;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 100));
+          } else if (node.type === "crop_image") {
             const inputs = resolveInputs(nodeId, node);
-            const handle = await tasks.trigger<typeof cropImageTask>("crop-image", {
-              imageUrl: inputs.input_image,
-              x: inputs.x || 0,
-              y: inputs.y || 0,
-              width: inputs.width || 100,
-              height: inputs.height || 100,
-            });
+            const handle = await tasks.trigger<typeof cropImageTask>(
+              "crop-image",
+              {
+                imageUrl: String(inputs.input_image ?? ""),
+                x: Number(inputs.x ?? 0),
+                y: Number(inputs.y ?? 0),
+                width: Number(inputs.width ?? 100),
+                height: Number(inputs.height ?? 100),
+              },
+            );
             const cropResult = await pollTriggerRun(handle.id);
-            output = { output_image: cropResult?.croppedImageUrl };
-          } 
-          else if (node.type === "gemini") {
+            output = {
+              output_image: cropResult.croppedImageUrl ?? "",
+              fallback: cropResult.fallback ?? false,
+            };
+          } else if (node.type === "gemini") {
             const inputs = resolveInputs(nodeId, node);
-            let prompt = inputs.prompt;
-            if (!prompt && node.data?.prompt) prompt = node.data.prompt;
+            const prompt =
+              typeof inputs.prompt === "string" && inputs.prompt.trim().length > 0
+                ? inputs.prompt
+                : node.data?.prompt ?? "Write a helpful response.";
 
-            const geminiApiKey = process.env.GEMINI_API_KEY;
-            if (!geminiApiKey) throw new Error("GEMINI_API_KEY is not set");
-
-            // Always sanitize model — handles deprecated names saved in DB
-            const modelName = sanitizeModel(node.data?.model);
-
-            const genAI = new GoogleGenerativeAI(geminiApiKey);
-            const genModel = genAI.getGenerativeModel({
-              model: modelName,
-              systemInstruction: inputs.system_prompt || undefined,
+            const handle = await tasks.trigger<typeof geminiTask>("gemini-task", {
+              prompt,
+              systemPrompt:
+                typeof inputs.system_prompt === "string"
+                  ? inputs.system_prompt
+                  : undefined,
+              imageUrl: inputs.image_vision as string | string[] | undefined,
+              model: sanitizeModel(node.data?.model),
             });
-
-            const parts: any[] = [{ text: prompt || "Hello" }];
-
-            if (inputs.image_vision) {
-              const imageUrls = Array.isArray(inputs.image_vision)
-                ? inputs.image_vision
-                : [inputs.image_vision];
-              for (const url of imageUrls) {
-                if (!url) continue;
-                if (url.startsWith("data:")) {
-                  const matches = url.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/);
-                  if (matches) {
-                    parts.push({ inlineData: { mimeType: matches[1], data: matches[2] } });
-                  }
-                } else {
-                  const imgRes = await axios.get(url, { responseType: "arraybuffer" });
-                  const ct = (imgRes.headers["content-type"] as string) ?? "";
-                  if (!ct.startsWith("image/")) throw new Error(`Not an image URL: ${url}`);
-                  parts.push({ inlineData: { mimeType: ct, data: Buffer.from(imgRes.data, "binary").toString("base64") } });
-                }
-              }
-            }
-
-            // Retry once on 503 (Gemini transient error)
-            let geminiResult;
-            try {
-              geminiResult = await genModel.generateContent(parts);
-            } catch (e: any) {
-              if (e?.message?.includes("503") || e?.message?.includes("Service Unavailable")) {
-                await new Promise(r => setTimeout(r, 3000));
-                geminiResult = await genModel.generateContent(parts);
-              } else {
-                throw e;
-              }
-            }
-            output = { response: geminiResult.response.text() };
-          }
-          else if (node.type === "response") {
+            const geminiResult = await pollTriggerRun(handle.id);
+            output = {
+              response: geminiResult.response ?? "",
+              fallback: geminiResult.fallback ?? false,
+            };
+          } else if (node.type === "response") {
             const inputs = resolveInputs(nodeId, node);
-            output = { result: inputs.result };
-            await new Promise((r) => setTimeout(r, 100));
+            output = { result: String(inputs.result ?? "") };
+            await new Promise((resolve) => setTimeout(resolve, 100));
           }
 
           const finishedAt = new Date().toISOString();
           nodeOutputs[nodeId] = output;
-          const nodeResult = { nodeId, status: "success", startedAt, finishedAt, output };
+
+          const nodeResult = {
+            nodeId,
+            status: "success",
+            startedAt,
+            finishedAt,
+            output,
+          };
           nodeResults.push(nodeResult);
           sendUpdate({ type: "node_success", ...nodeResult });
+
           return output;
-        } catch (error: any) {
+        } catch (error) {
           const finishedAt = new Date().toISOString();
-          const nodeResult = { nodeId, status: "failed", startedAt, finishedAt, error: error.message };
+          const message =
+            error instanceof Error ? error.message : "Unknown execution error";
+          const nodeResult = {
+            nodeId,
+            status: "failed",
+            startedAt,
+            finishedAt,
+            error: message,
+          };
           nodeResults.push(nodeResult);
           sendUpdate({ type: "node_failed", ...nodeResult });
-          throw new Error(`Node ${nodeId} failed: ${error.message}`);
+          throw new Error(`Node ${nodeId} failed: ${message}`);
         }
       };
 
       try {
-        // Kick off execution for all nodes. 
-        // Each node will internally await its upstream dependencies before doing work.
-        nodes.forEach((node: any) => {
+        for (const node of nodes) {
           nodePromises[node.id] = executeNode(node.id);
-        });
+        }
 
-        // Wait for ALL node executions to settle
         await Promise.all(Object.values(nodePromises));
 
         await db.workflowRun.update({
@@ -251,21 +302,26 @@ export async function POST(req: NextRequest) {
           data: {
             status: "success",
             finishedAt: new Date(),
-            nodeResults: JSON.stringify(nodeResults),
+            nodeResults: nodeResults as Prisma.InputJsonValue,
           },
         });
+
         sendUpdate({ type: "workflow_success" });
         controller.close();
-      } catch (err: any) {
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Workflow execution failed";
+
         await db.workflowRun.update({
           where: { id: runRecord.id },
           data: {
             status: "failed",
             finishedAt: new Date(),
-            nodeResults: JSON.stringify(nodeResults),
+            nodeResults: nodeResults as Prisma.InputJsonValue,
           },
         });
-        sendUpdate({ type: "workflow_failed", error: err.message });
+
+        sendUpdate({ type: "workflow_failed", error: message });
         controller.close();
       }
     },
@@ -275,7 +331,7 @@ export async function POST(req: NextRequest) {
     headers: {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
-      "Connection": "keep-alive",
+      Connection: "keep-alive",
     },
   });
 }

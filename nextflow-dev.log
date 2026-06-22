@@ -1,0 +1,129 @@
+
+> nextflow@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.9 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://172.16.0.2:3000
+- Environments: .env.local
+✓ Ready in 420ms
+
+Attention: Clerk collects telemetry data from its SDKs when connected to development instances.
+The data collected is used to inform Clerk's product roadmap.
+To learn more, including how to opt-out from the telemetry program, visit: https://clerk.com/docs/telemetry.
+
+ GET /sign-in?redirect_url=http%3A%2F%2Flocalhost%3A3000%2Fdashboard 200 in 1118ms (next.js: 679ms, proxy.ts: 25ms, application-code: 415ms)
+[browser] Clerk: Clerk has been loaded with development keys. Development instances have strict usage limits and should not be used when deploying your application to production. Learn more: https://clerk.com/docs/deployments/overview (file://D:/project/workflow builder/.next/dev/static/chunks/node_modules_next_dist_1ybzpk2._.js:2477:13)
+ GET /sign-in/SignIn_clerk_catchall_check_1782116332188 200 in 119ms (next.js: 20ms, proxy.ts: 24ms, application-code: 75ms)
+ GET /dashboard 200 in 185ms (next.js: 46ms, proxy.ts: 31ms, application-code: 109ms)
+[browser] Clerk: Clerk has been loaded with development keys. Development instances have strict usage limits and should not be used when deploying your application to production. Learn more: https://clerk.com/docs/deployments/overview (file://D:/project/workflow builder/.next/dev/static/chunks/node_modules_next_dist_1ybzpk2._.js:2477:13)
+prisma:query SELECT "public"."User"."id", "public"."User"."clerkId", "public"."User"."email", "public"."User"."createdAt" FROM "public"."User" WHERE ("public"."User"."clerkId" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."Workflow"."id", "public"."Workflow"."name", "public"."Workflow"."userId", "public"."Workflow"."nodes", "public"."Workflow"."edges", "public"."Workflow"."createdAt", "public"."Workflow"."updatedAt" FROM "public"."Workflow" WHERE "public"."Workflow"."userId" = $1 ORDER BY "public"."Workflow"."updatedAt" DESC OFFSET $2
+ GET /api/workflows 200 in 4.4s (next.js: 284ms, proxy.ts: 21ms, application-code: 4.1s)
+prisma:query SELECT "public"."User"."id", "public"."User"."clerkId", "public"."User"."email", "public"."User"."createdAt" FROM "public"."User" WHERE ("public"."User"."clerkId" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."Workflow"."id", "public"."Workflow"."name", "public"."Workflow"."userId", "public"."Workflow"."nodes", "public"."Workflow"."edges", "public"."Workflow"."createdAt", "public"."Workflow"."updatedAt" FROM "public"."Workflow" WHERE ("public"."Workflow"."id" = $1 AND "public"."Workflow"."userId" = $2) LIMIT $3 OFFSET $4
+ GET /workflow/cmqeul33h0001if04yf16mjr2 200 in 1681ms (next.js: 555ms, proxy.ts: 25ms, application-code: 1101ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."clerkId", "public"."User"."email", "public"."User"."createdAt" FROM "public"."User" WHERE ("public"."User"."clerkId" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."WorkflowRun"."id", "public"."WorkflowRun"."workflowId", "public"."WorkflowRun"."status", "public"."WorkflowRun"."scope", "public"."WorkflowRun"."startedAt", "public"."WorkflowRun"."finishedAt", "public"."WorkflowRun"."nodeResults" FROM "public"."WorkflowRun" LEFT JOIN "public"."Workflow" AS "j0" ON ("j0"."id") = ("public"."WorkflowRun"."workflowId") WHERE ("public"."WorkflowRun"."workflowId" = $1 AND ("j0"."userId" = $2 AND ("j0"."id" IS NOT NULL))) ORDER BY "public"."WorkflowRun"."startedAt" DESC OFFSET $3
+ GET /api/workflows/cmqeul33h0001if04yf16mjr2/runs 200 in 1812ms (next.js: 791ms, proxy.ts: 13ms, application-code: 1008ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."clerkId", "public"."User"."email", "public"."User"."createdAt" FROM "public"."User" WHERE ("public"."User"."clerkId" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."WorkflowRun"."id", "public"."WorkflowRun"."workflowId", "public"."WorkflowRun"."status", "public"."WorkflowRun"."scope", "public"."WorkflowRun"."startedAt", "public"."WorkflowRun"."finishedAt", "public"."WorkflowRun"."nodeResults" FROM "public"."WorkflowRun" LEFT JOIN "public"."Workflow" AS "j0" ON ("j0"."id") = ("public"."WorkflowRun"."workflowId") WHERE ("public"."WorkflowRun"."workflowId" = $1 AND ("j0"."userId" = $2 AND ("j0"."id" IS NOT NULL))) ORDER BY "public"."WorkflowRun"."startedAt" DESC OFFSET $3
+ GET /api/workflows/cmqeul33h0001if04yf16mjr2/runs 200 in 640ms (next.js: 18ms, proxy.ts: 20ms, application-code: 602ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."clerkId", "public"."User"."email", "public"."User"."createdAt" FROM "public"."User" WHERE ("public"."User"."clerkId" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query UPDATE "public"."Workflow" SET "nodes" = $1, "edges" = $2, "updatedAt" = $3 WHERE ("public"."Workflow"."id" = $4 AND "public"."Workflow"."userId" = $5) RETURNING "public"."Workflow"."id", "public"."Workflow"."name", "public"."Workflow"."userId", "public"."Workflow"."nodes", "public"."Workflow"."edges", "public"."Workflow"."createdAt", "public"."Workflow"."updatedAt"
+ PATCH /api/workflows/cmqeul33h0001if04yf16mjr2 200 in 3.7s (next.js: 795ms, proxy.ts: 17ms, application-code: 2.9s)
+prisma:query SELECT "public"."User"."id", "public"."User"."clerkId", "public"."User"."email", "public"."User"."createdAt" FROM "public"."User" WHERE ("public"."User"."clerkId" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."Workflow"."id", "public"."Workflow"."name", "public"."Workflow"."userId", "public"."Workflow"."nodes", "public"."Workflow"."edges", "public"."Workflow"."createdAt", "public"."Workflow"."updatedAt" FROM "public"."Workflow" WHERE ("public"."Workflow"."id" = $1 AND "public"."Workflow"."userId" = $2) LIMIT $3 OFFSET $4
+prisma:query SELECT 1
+prisma:query INSERT INTO "public"."WorkflowRun" ("id","workflowId","status","scope","startedAt","nodeResults") VALUES ($1,$2,$3,$4,$5,$6) RETURNING "public"."WorkflowRun"."id", "public"."WorkflowRun"."workflowId", "public"."WorkflowRun"."status", "public"."WorkflowRun"."scope", "public"."WorkflowRun"."startedAt", "public"."WorkflowRun"."finishedAt", "public"."WorkflowRun"."nodeResults"
+prisma:query SELECT "public"."User"."id", "public"."User"."clerkId", "public"."User"."email", "public"."User"."createdAt" FROM "public"."User" WHERE ("public"."User"."clerkId" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query UPDATE "public"."Workflow" SET "nodes" = $1, "edges" = $2, "updatedAt" = $3 WHERE ("public"."Workflow"."id" = $4 AND "public"."Workflow"."userId" = $5) RETURNING "public"."Workflow"."id", "public"."Workflow"."name", "public"."Workflow"."userId", "public"."Workflow"."nodes", "public"."Workflow"."edges", "public"."Workflow"."createdAt", "public"."Workflow"."updatedAt"
+ PATCH /api/workflows/cmqeul33h0001if04yf16mjr2 200 in 594ms (next.js: 17ms, proxy.ts: 21ms, application-code: 555ms)
+prisma:query UPDATE "public"."WorkflowRun" SET "status" = $1, "finishedAt" = $2, "nodeResults" = $3 WHERE ("public"."WorkflowRun"."id" = $4 AND 1=1) RETURNING "public"."WorkflowRun"."id", "public"."WorkflowRun"."workflowId", "public"."WorkflowRun"."status", "public"."WorkflowRun"."scope", "public"."WorkflowRun"."startedAt", "public"."WorkflowRun"."finishedAt", "public"."WorkflowRun"."nodeResults"
+ POST /api/run 200 in 6.6s (next.js: 222ms, proxy.ts: 29ms, application-code: 6.3s)
+prisma:query SELECT "public"."User"."id", "public"."User"."clerkId", "public"."User"."email", "public"."User"."createdAt" FROM "public"."User" WHERE ("public"."User"."clerkId" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT 1
+prisma:query SELECT "public"."User"."id", "public"."User"."clerkId", "public"."User"."email", "public"."User"."createdAt" FROM "public"."User" WHERE ("public"."User"."clerkId" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."WorkflowRun"."id", "public"."WorkflowRun"."workflowId", "public"."WorkflowRun"."status", "public"."WorkflowRun"."scope", "public"."WorkflowRun"."startedAt", "public"."WorkflowRun"."finishedAt", "public"."WorkflowRun"."nodeResults" FROM "public"."WorkflowRun" LEFT JOIN "public"."Workflow" AS "j0" ON ("j0"."id") = ("public"."WorkflowRun"."workflowId") WHERE ("public"."WorkflowRun"."workflowId" = $1 AND ("j0"."userId" = $2 AND ("j0"."id" IS NOT NULL))) ORDER BY "public"."WorkflowRun"."startedAt" DESC OFFSET $3
+ GET /api/workflows/cmqeul33h0001if04yf16mjr2/runs 200 in 1034ms (next.js: 16ms, proxy.ts: 11ms, application-code: 1006ms)
+prisma:query UPDATE "public"."Workflow" SET "nodes" = $1, "edges" = $2, "updatedAt" = $3 WHERE ("public"."Workflow"."id" = $4 AND "public"."Workflow"."userId" = $5) RETURNING "public"."Workflow"."id", "public"."Workflow"."name", "public"."Workflow"."userId", "public"."Workflow"."nodes", "public"."Workflow"."edges", "public"."Workflow"."createdAt", "public"."Workflow"."updatedAt"
+ PATCH /api/workflows/cmqeul33h0001if04yf16mjr2 200 in 1256ms (next.js: 14ms, proxy.ts: 21ms, application-code: 1221ms)
+ GET /dashboard 200 in 142ms (next.js: 8ms, proxy.ts: 21ms, application-code: 114ms)
+prisma:query SELECT 1
+prisma:query SELECT "public"."User"."id", "public"."User"."clerkId", "public"."User"."email", "public"."User"."createdAt" FROM "public"."User" WHERE ("public"."User"."clerkId" = $1 AND 1=1) LIMIT $2 OFFSET $3
+[browser] Clerk: Clerk has been loaded with development keys. Development instances have strict usage limits and should not be used when deploying your application to production. Learn more: https://clerk.com/docs/deployments/overview (file://D:/project/workflow builder/.next/dev/static/chunks/node_modules_next_dist_1ybzpk2._.js:2477:13)
+prisma:query SELECT "public"."Workflow"."id", "public"."Workflow"."name", "public"."Workflow"."userId", "public"."Workflow"."nodes", "public"."Workflow"."edges", "public"."Workflow"."createdAt", "public"."Workflow"."updatedAt" FROM "public"."Workflow" WHERE "public"."Workflow"."userId" = $1 ORDER BY "public"."Workflow"."updatedAt" DESC OFFSET $2
+ GET /api/workflows 200 in 838ms (next.js: 5ms, proxy.ts: 18ms, application-code: 814ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."clerkId", "public"."User"."email", "public"."User"."createdAt" FROM "public"."User" WHERE ("public"."User"."clerkId" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query INSERT INTO "public"."Workflow" ("id","name","userId","nodes","edges","createdAt","updatedAt") VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING "public"."Workflow"."id", "public"."Workflow"."name", "public"."Workflow"."userId", "public"."Workflow"."nodes", "public"."Workflow"."edges", "public"."Workflow"."createdAt", "public"."Workflow"."updatedAt"
+ POST /api/workflows 200 in 779ms (next.js: 5ms, proxy.ts: 25ms, application-code: 748ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."clerkId", "public"."User"."email", "public"."User"."createdAt" FROM "public"."User" WHERE ("public"."User"."clerkId" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."Workflow"."id", "public"."Workflow"."name", "public"."Workflow"."userId", "public"."Workflow"."nodes", "public"."Workflow"."edges", "public"."Workflow"."createdAt", "public"."Workflow"."updatedAt" FROM "public"."Workflow" WHERE ("public"."Workflow"."id" = $1 AND "public"."Workflow"."userId" = $2) LIMIT $3 OFFSET $4
+ GET /workflow/cmqoy3cc60003c4xwtv3cuchg 200 in 705ms (next.js: 17ms, proxy.ts: 16ms, application-code: 672ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."clerkId", "public"."User"."email", "public"."User"."createdAt" FROM "public"."User" WHERE ("public"."User"."clerkId" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."WorkflowRun"."id", "public"."WorkflowRun"."workflowId", "public"."WorkflowRun"."status", "public"."WorkflowRun"."scope", "public"."WorkflowRun"."startedAt", "public"."WorkflowRun"."finishedAt", "public"."WorkflowRun"."nodeResults" FROM "public"."WorkflowRun" LEFT JOIN "public"."Workflow" AS "j0" ON ("j0"."id") = ("public"."WorkflowRun"."workflowId") WHERE ("public"."WorkflowRun"."workflowId" = $1 AND ("j0"."userId" = $2 AND ("j0"."id" IS NOT NULL))) ORDER BY "public"."WorkflowRun"."startedAt" DESC OFFSET $3
+ GET /api/workflows/cmqoy3cc60003c4xwtv3cuchg/runs 200 in 612ms (next.js: 20ms, proxy.ts: 21ms, application-code: 572ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."clerkId", "public"."User"."email", "public"."User"."createdAt" FROM "public"."User" WHERE ("public"."User"."clerkId" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."WorkflowRun"."id", "public"."WorkflowRun"."workflowId", "public"."WorkflowRun"."status", "public"."WorkflowRun"."scope", "public"."WorkflowRun"."startedAt", "public"."WorkflowRun"."finishedAt", "public"."WorkflowRun"."nodeResults" FROM "public"."WorkflowRun" LEFT JOIN "public"."Workflow" AS "j0" ON ("j0"."id") = ("public"."WorkflowRun"."workflowId") WHERE ("public"."WorkflowRun"."workflowId" = $1 AND ("j0"."userId" = $2 AND ("j0"."id" IS NOT NULL))) ORDER BY "public"."WorkflowRun"."startedAt" DESC OFFSET $3
+ GET /api/workflows/cmqoy3cc60003c4xwtv3cuchg/runs 200 in 548ms (next.js: 7ms, proxy.ts: 12ms, application-code: 529ms)
+prisma:query SELECT 1
+prisma:query SELECT "public"."User"."id", "public"."User"."clerkId", "public"."User"."email", "public"."User"."createdAt" FROM "public"."User" WHERE ("public"."User"."clerkId" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query UPDATE "public"."Workflow" SET "nodes" = $1, "edges" = $2, "updatedAt" = $3 WHERE ("public"."Workflow"."id" = $4 AND "public"."Workflow"."userId" = $5) RETURNING "public"."Workflow"."id", "public"."Workflow"."name", "public"."Workflow"."userId", "public"."Workflow"."nodes", "public"."Workflow"."edges", "public"."Workflow"."createdAt", "public"."Workflow"."updatedAt"
+ PATCH /api/workflows/cmqoy3cc60003c4xwtv3cuchg 200 in 1002ms (next.js: 15ms, proxy.ts: 12ms, application-code: 976ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."clerkId", "public"."User"."email", "public"."User"."createdAt" FROM "public"."User" WHERE ("public"."User"."clerkId" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query UPDATE "public"."Workflow" SET "nodes" = $1, "edges" = $2, "updatedAt" = $3 WHERE ("public"."Workflow"."id" = $4 AND "public"."Workflow"."userId" = $5) RETURNING "public"."Workflow"."id", "public"."Workflow"."name", "public"."Workflow"."userId", "public"."Workflow"."nodes", "public"."Workflow"."edges", "public"."Workflow"."createdAt", "public"."Workflow"."updatedAt"
+ PATCH /api/workflows/cmqoy3cc60003c4xwtv3cuchg 200 in 543ms (next.js: 13ms, proxy.ts: 16ms, application-code: 514ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."clerkId", "public"."User"."email", "public"."User"."createdAt" FROM "public"."User" WHERE ("public"."User"."clerkId" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query UPDATE "public"."Workflow" SET "nodes" = $1, "edges" = $2, "updatedAt" = $3 WHERE ("public"."Workflow"."id" = $4 AND "public"."Workflow"."userId" = $5) RETURNING "public"."Workflow"."id", "public"."Workflow"."name", "public"."Workflow"."userId", "public"."Workflow"."nodes", "public"."Workflow"."edges", "public"."Workflow"."createdAt", "public"."Workflow"."updatedAt"
+ PATCH /api/workflows/cmqoy3cc60003c4xwtv3cuchg 200 in 548ms (next.js: 17ms, proxy.ts: 20ms, application-code: 511ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."clerkId", "public"."User"."email", "public"."User"."createdAt" FROM "public"."User" WHERE ("public"."User"."clerkId" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query UPDATE "public"."Workflow" SET "nodes" = $1, "edges" = $2, "updatedAt" = $3 WHERE ("public"."Workflow"."id" = $4 AND "public"."Workflow"."userId" = $5) RETURNING "public"."Workflow"."id", "public"."Workflow"."name", "public"."Workflow"."userId", "public"."Workflow"."nodes", "public"."Workflow"."edges", "public"."Workflow"."createdAt", "public"."Workflow"."updatedAt"
+ PATCH /api/workflows/cmqoy3cc60003c4xwtv3cuchg 200 in 581ms (next.js: 17ms, proxy.ts: 15ms, application-code: 549ms)
+prisma:error Error in PostgreSQL connection: Error { kind: Closed, cause: None }
+prisma:error Error in PostgreSQL connection: Error { kind: Closed, cause: None }
+prisma:query SELECT "public"."User"."id", "public"."User"."clerkId", "public"."User"."email", "public"."User"."createdAt" FROM "public"."User" WHERE ("public"."User"."clerkId" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query UPDATE "public"."Workflow" SET "nodes" = $1, "edges" = $2, "updatedAt" = $3 WHERE ("public"."Workflow"."id" = $4 AND "public"."Workflow"."userId" = $5) RETURNING "public"."Workflow"."id", "public"."Workflow"."name", "public"."Workflow"."userId", "public"."Workflow"."nodes", "public"."Workflow"."edges", "public"."Workflow"."createdAt", "public"."Workflow"."updatedAt"
+ PATCH /api/workflows/cmqoy3cc60003c4xwtv3cuchg 200 in 5.9s (next.js: 14ms, proxy.ts: 1900ms, application-code: 4.0s)
+prisma:query SELECT "public"."User"."id", "public"."User"."clerkId", "public"."User"."email", "public"."User"."createdAt" FROM "public"."User" WHERE ("public"."User"."clerkId" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query UPDATE "public"."Workflow" SET "nodes" = $1, "edges" = $2, "updatedAt" = $3 WHERE ("public"."Workflow"."id" = $4 AND "public"."Workflow"."userId" = $5) RETURNING "public"."Workflow"."id", "public"."Workflow"."name", "public"."Workflow"."userId", "public"."Workflow"."nodes", "public"."Workflow"."edges", "public"."Workflow"."createdAt", "public"."Workflow"."updatedAt"
+ PATCH /api/workflows/cmqoy3cc60003c4xwtv3cuchg 200 in 614ms (next.js: 13ms, proxy.ts: 11ms, application-code: 589ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."clerkId", "public"."User"."email", "public"."User"."createdAt" FROM "public"."User" WHERE ("public"."User"."clerkId" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query UPDATE "public"."Workflow" SET "nodes" = $1, "edges" = $2, "updatedAt" = $3 WHERE ("public"."Workflow"."id" = $4 AND "public"."Workflow"."userId" = $5) RETURNING "public"."Workflow"."id", "public"."Workflow"."name", "public"."Workflow"."userId", "public"."Workflow"."nodes", "public"."Workflow"."edges", "public"."Workflow"."createdAt", "public"."Workflow"."updatedAt"
+ PATCH /api/workflows/cmqoy3cc60003c4xwtv3cuchg 200 in 583ms (next.js: 15ms, proxy.ts: 17ms, application-code: 551ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."clerkId", "public"."User"."email", "public"."User"."createdAt" FROM "public"."User" WHERE ("public"."User"."clerkId" = $1 AND 1=1) LIMIT $2 OFFSET $3
+ GET /sign-in 200 in 133ms (next.js: 34ms, proxy.ts: 23ms, application-code: 77ms)
+prisma:query SELECT "public"."Workflow"."id", "public"."Workflow"."name", "public"."Workflow"."userId", "public"."Workflow"."nodes", "public"."Workflow"."edges", "public"."Workflow"."createdAt", "public"."Workflow"."updatedAt" FROM "public"."Workflow" WHERE ("public"."Workflow"."id" = $1 AND "public"."Workflow"."userId" = $2) LIMIT $3 OFFSET $4
+ POST /workflow/cmqoy3cc60003c4xwtv3cuchg 200 in 928ms (next.js: 24ms, proxy.ts: 30ms, application-code: 874ms)
+  └─ ƒ invalidateCacheAction() in 6ms node_modules/@clerk/nextjs/dist/esm/app-router/server-actions.js
+ GET /sign-in 200 in 358ms (next.js: 218ms, proxy.ts: 29ms, application-code: 110ms)
+ GET /sign-in/SignIn_clerk_catchall_check_1782116771306 200 in 369ms (next.js: 36ms, proxy.ts: 27ms, application-code: 306ms)
+ GET /sign-in/sso-callback?sign_in_force_redirect_url=http%3A%2F%2Flocalhost%3A3000%2Fdashboard 200 in 167ms (next.js: 27ms, proxy.ts: 19ms, application-code: 121ms)
+[browser] Clerk: Clerk has been loaded with development keys. Development instances have strict usage limits and should not be used when deploying your application to production. Learn more: https://clerk.com/docs/deployments/overview (file://D:/project/workflow builder/.next/dev/static/chunks/node_modules_next_dist_1ybzpk2._.js:2477:13)
+ GET /sign-in/sso-callback/SignIn_clerk_catchall_check_1782116785901 200 in 181ms (next.js: 31ms, proxy.ts: 25ms, application-code: 126ms)
+ POST /sign-in/sso-callback?sign_in_force_redirect_url=http%3A%2F%2Flocalhost%3A3000%2Fdashboard 200 in 93ms (next.js: 18ms, proxy.ts: 20ms, application-code: 55ms)
+  └─ ƒ invalidateCacheAction() in 4ms node_modules/@clerk/nextjs/dist/esm/app-router/server-actions.js
+ GET / 200 in 165ms (next.js: 76ms, proxy.ts: 25ms, application-code: 65ms)
+ GET /dashboard 200 in 236ms (next.js: 19ms, proxy.ts: 38ms, application-code: 180ms)
+ GET /dashboard 200 in 95ms (next.js: 8ms, proxy.ts: 22ms, application-code: 65ms)
+ GET / 307 in 192ms (next.js: 6ms, proxy.ts: 20ms, application-code: 165ms)
+ GET /dashboard 200 in 105ms (next.js: 6ms, proxy.ts: 10ms, application-code: 89ms)
+[browser] Clerk: Clerk has been loaded with development keys. Development instances have strict usage limits and should not be used when deploying your application to production. Learn more: https://clerk.com/docs/deployments/overview (file://D:/project/workflow builder/.next/dev/static/chunks/node_modules_next_dist_1ybzpk2._.js:2477:13)
+prisma:query SELECT 1
+prisma:query SELECT "public"."User"."id", "public"."User"."clerkId", "public"."User"."email", "public"."User"."createdAt" FROM "public"."User" WHERE ("public"."User"."clerkId" = $1 AND 1=1) LIMIT $2 OFFSET $3
+ GET /api/workflows 200 in 513ms (next.js: 4ms, proxy.ts: 10ms, application-code: 498ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."clerkId", "public"."User"."email", "public"."User"."createdAt" FROM "public"."User" WHERE ("public"."User"."clerkId" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query INSERT INTO "public"."User" ("id","clerkId","email","createdAt") VALUES ($1,$2,$3,$4) RETURNING "public"."User"."id", "public"."User"."clerkId", "public"."User"."email", "public"."User"."createdAt"
+prisma:query INSERT INTO "public"."Workflow" ("id","name","userId","nodes","edges","createdAt","updatedAt") VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING "public"."Workflow"."id", "public"."Workflow"."name", "public"."Workflow"."userId", "public"."Workflow"."nodes", "public"."Workflow"."edges", "public"."Workflow"."createdAt", "public"."Workflow"."updatedAt"
+ POST /api/workflows 200 in 1417ms (next.js: 4ms, proxy.ts: 19ms, application-code: 1393ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."clerkId", "public"."User"."email", "public"."User"."createdAt" FROM "public"."User" WHERE ("public"."User"."clerkId" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."Workflow"."id", "public"."Workflow"."name", "public"."Workflow"."userId", "public"."Workflow"."nodes", "public"."Workflow"."edges", "public"."Workflow"."createdAt", "public"."Workflow"."updatedAt" FROM "public"."Workflow" WHERE ("public"."Workflow"."id" = $1 AND "public"."Workflow"."userId" = $2) LIMIT $3 OFFSET $4
+ GET /workflow/cmqoyew280006c4xwkf5fzoxb 200 in 574ms (next.js: 16ms, proxy.ts: 22ms, application-code: 535ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."clerkId", "public"."User"."email", "public"."User"."createdAt" FROM "public"."User" WHERE ("public"."User"."clerkId" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."WorkflowRun"."id", "public"."WorkflowRun"."workflowId", "public"."WorkflowRun"."status", "public"."WorkflowRun"."scope", "public"."WorkflowRun"."startedAt", "public"."WorkflowRun"."finishedAt", "public"."WorkflowRun"."nodeResults" FROM "public"."WorkflowRun" LEFT JOIN "public"."Workflow" AS "j0" ON ("j0"."id") = ("public"."WorkflowRun"."workflowId") WHERE ("public"."WorkflowRun"."workflowId" = $1 AND ("j0"."userId" = $2 AND ("j0"."id" IS NOT NULL))) ORDER BY "public"."WorkflowRun"."startedAt" DESC OFFSET $3
+ GET /api/workflows/cmqoyew280006c4xwkf5fzoxb/runs 200 in 804ms (next.js: 17ms, proxy.ts: 21ms, application-code: 766ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."clerkId", "public"."User"."email", "public"."User"."createdAt" FROM "public"."User" WHERE ("public"."User"."clerkId" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."WorkflowRun"."id", "public"."WorkflowRun"."workflowId", "public"."WorkflowRun"."status", "public"."WorkflowRun"."scope", "public"."WorkflowRun"."startedAt", "public"."WorkflowRun"."finishedAt", "public"."WorkflowRun"."nodeResults" FROM "public"."WorkflowRun" LEFT JOIN "public"."Workflow" AS "j0" ON ("j0"."id") = ("public"."WorkflowRun"."workflowId") WHERE ("public"."WorkflowRun"."workflowId" = $1 AND ("j0"."userId" = $2 AND ("j0"."id" IS NOT NULL))) ORDER BY "public"."WorkflowRun"."startedAt" DESC OFFSET $3
+ GET /api/workflows/cmqoyew280006c4xwkf5fzoxb/runs 200 in 633ms (next.js: 14ms, proxy.ts: 19ms, application-code: 600ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."clerkId", "public"."User"."email", "public"."User"."createdAt" FROM "public"."User" WHERE ("public"."User"."clerkId" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query UPDATE "public"."Workflow" SET "nodes" = $1, "edges" = $2, "updatedAt" = $3 WHERE ("public"."Workflow"."id" = $4 AND "public"."Workflow"."userId" = $5) RETURNING "public"."Workflow"."id", "public"."Workflow"."name", "public"."Workflow"."userId", "public"."Workflow"."nodes", "public"."Workflow"."edges", "public"."Workflow"."createdAt", "public"."Workflow"."updatedAt"
+ PATCH /api/workflows/cmqoyew280006c4xwkf5fzoxb 200 in 3.1s (next.js: 15ms, proxy.ts: 17ms, application-code: 3.1s)

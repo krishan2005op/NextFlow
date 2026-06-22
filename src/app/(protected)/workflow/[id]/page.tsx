@@ -5,6 +5,7 @@ import { WorkflowCanvas } from "@/components/canvas/WorkflowCanvas";
 import { WorkflowHeader } from "@/components/canvas/WorkflowHeader";
 import { HistorySidebar } from "@/components/canvas/HistorySidebar";
 import { Metadata } from "next";
+import { parseStoredJson } from "@/lib/workflow-json";
 
 export const metadata: Metadata = {
   title: "Workflow Builder - NextFlow",
@@ -43,15 +44,14 @@ export default async function WorkflowPage({
   }
 
   return (
-    <div className="w-full h-screen bg-[#0F0F0F] text-white flex flex-col overflow-hidden">
+    <div className="w-full h-screen bg-[#f3f1ec] text-[#1b1a17] flex flex-col overflow-hidden">
       <WorkflowHeader workflowId={workflow.id} workflowName={workflow.name} />
 
-      {/* Main Builder Area */}
       <div className="flex-1 relative flex overflow-hidden">
         <WorkflowCanvas 
           workflowId={workflow.id} 
-          initialNodes={JSON.parse(workflow.nodes as string)} 
-          initialEdges={JSON.parse(workflow.edges as string)} 
+          initialNodes={parseStoredJson(workflow.nodes, [])} 
+          initialEdges={parseStoredJson(workflow.edges, [])} 
         />
         <HistorySidebar workflowId={workflow.id} />
       </div>

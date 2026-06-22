@@ -2,8 +2,8 @@
 @import "@xyflow/react/dist/style.css";
 
 :root {
-  --background: #0f0f0f;
-  --foreground: #f5f5f5;
+  --background: #f3f1ec;
+  --foreground: #171511;
 }
 
 @theme inline {
@@ -29,12 +29,18 @@
   }
 }
 
+@keyframes dashdraw {
+  to {
+    stroke-dashoffset: -10;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
 
 html {
-  background: #0f0f0f;
+  background: #f3f1ec;
 }
 
 body {

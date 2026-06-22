@@ -34,8 +34,8 @@ export async function PATCH(
       },
       data: {
         ...(name && { name }),
-        ...(nodes && { nodes: JSON.stringify(nodes) }),
-        ...(edges && { edges: JSON.stringify(edges) }),
+        ...(nodes !== undefined && { nodes }),
+        ...(edges !== undefined && { edges }),
       },
     });
 

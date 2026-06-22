@@ -1,7 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Connection,
+  Edge,
+  Node,
   ReactFlow,
   MiniMap,
   Controls,
@@ -13,7 +16,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { useWorkflowStore } from "@/store/workflow-store";
 import { RequestInputsNode, ResponseNode, CropImageNode, GeminiNode } from "@/components/nodes";
-import { Plus } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 
 const nodeTypes = {
   request_inputs: RequestInputsNode,
@@ -22,37 +25,51 @@ const nodeTypes = {
   gemini: GeminiNode,
 };
 
-export function WorkflowCanvas({ workflowId, initialNodes, initialEdges }: { workflowId: string, initialNodes: any[], initialEdges: any[] }) {
+export function WorkflowCanvas({
+  workflowId,
+  initialNodes,
+  initialEdges,
+}: {
+  workflowId: string;
+  initialNodes: Node[];
+  initialEdges: Edge[];
+}) {
   const {
     nodes,
     edges,
     onNodesChange,
     onEdgesChange,
     onConnect,
-    setNodes,
-    setEdges,
+    resetWorkflow,
     setWorkflowId,
     addNode,
     undo,
     redo,
-    historyIndex
   } = useWorkflowStore();
 
   const [showPicker, setShowPicker] = useState(false);
+  const [query, setQuery] = useState("");
+  const pickerItems = useMemo(
+    () =>
+      [
+        { type: "crop_image", label: "Crop Image", category: "Image" },
+        { type: "gemini", label: "Gemini 3.1 Pro", category: "LLM" },
+      ].filter((item) =>
+        item.label.toLowerCase().includes(query.trim().toLowerCase()),
+      ),
+    [query],
+  );
 
-  // Initialize store with server data
   useEffect(() => {
     setWorkflowId(workflowId);
-    if (nodes.length === 0) {
-      setNodes(initialNodes);
-      setEdges(initialEdges);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workflowId]);
+    resetWorkflow(initialNodes, initialEdges);
+  }, [initialEdges, initialNodes, resetWorkflow, setWorkflowId, workflowId]);
 
-  // Auto-save logic
   useEffect(() => {
-    if (nodes.length === 0) return; // avoid saving empty on initial mount if state not synced
+    if (nodes.length === 0) {
+      return;
+    }
+
     const timer = setTimeout(() => {
       fetch(`/api/workflows/${workflowId}`, {
         method: "PATCH",
@@ -64,7 +81,6 @@ export function WorkflowCanvas({ workflowId, initialNodes, initialEdges }: { wor
     return () => clearTimeout(timer);
   }, [nodes, edges, workflowId]);
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
@@ -81,18 +97,44 @@ export function WorkflowCanvas({ workflowId, initialNodes, initialEdges }: { wor
   }, [undo, redo]);
 
   const handleAddNode = (type: string, label: string) => {
+    const totalNodes = nodes.length;
+    let nodeIndex = nodes.filter((node) => node.type === type).length + 1;
+    let nodeId = `${type}-${nodeIndex}`;
+
+    while (nodes.some((node) => node.id === nodeId)) {
+      nodeIndex += 1;
+      nodeId = `${type}-${nodeIndex}`;
+    }
+
     const newNode = {
-      id: `${type}-${Date.now()}`,
+      id: nodeId,
       type,
-      position: { x: window.innerWidth / 2 - 100, y: window.innerHeight / 2 - 100 },
-      data: { label },
+      position: {
+        x: 420 + totalNodes * 42,
+        y: 180 + (totalNodes % 4) * 120,
+      },
+      data:
+        type === "crop_image"
+          ? {
+              label,
+              status: "idle",
+              inputs: { x: 0, y: 0, width: 100, height: 100 },
+            }
+          : {
+              label,
+              status: "idle",
+              model: "gemini-2.0-flash",
+              inputs: { system_prompt: "" },
+            },
     };
     addNode(newNode);
     setShowPicker(false);
+    setQuery("");
   };
 
-  const isValidConnection = useCallback((connection: any) => {
-    const { sourceHandle, targetHandle } = connection;
+  const isValidConnection = useCallback((connection: Connection | Edge) => {
+    const sourceHandle = connection.sourceHandle ?? null;
+    const targetHandle = connection.targetHandle ?? null;
     
     if (!sourceHandle || !targetHandle) return true;
 
@@ -118,51 +160,76 @@ export function WorkflowCanvas({ workflowId, initialNodes, initialEdges }: { wor
     return sourceType === targetAccepts;
   }, []);
 
+  const handleConnect = useCallback(
+    (connection: Connection) => {
+      if (!isValidConnection(connection)) {
+        return;
+      }
+
+      onConnect(connection);
+    },
+    [isValidConnection, onConnect],
+  );
+
   return (
-    <div className="flex-1 w-full h-full bg-[#0F0F0F] relative">
+    <div className="flex-1 w-full h-full bg-[#f6f4ef] relative">
       <ReactFlowProvider>
         <ReactFlow
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
+          onConnect={handleConnect}
           isValidConnection={isValidConnection}
           nodeTypes={nodeTypes}
           fitView
-          className="bg-[#0F0F0F]"
+          className="bg-[#f6f4ef]"
           minZoom={0.2}
           maxZoom={2}
         >
-          <Background color="#2A2A2A" gap={20} variant={BackgroundVariant.Dots} />
-          <Controls className="bg-[#1A1A1A] border border-[#2A2A2A] fill-white text-white" />
+          <Background color="#d7d2c8" gap={22} variant={BackgroundVariant.Dots} />
+          <Controls className="rounded-2xl border border-[#ded9ce] bg-white fill-[#1b1a17] text-[#1b1a17] shadow-sm" />
           <MiniMap 
             nodeColor="#7C3AED" 
-            maskColor="rgba(15, 15, 15, 0.7)" 
-            className="bg-[#1A1A1A] border border-[#2A2A2A]"
+            maskColor="rgba(244, 241, 234, 0.78)" 
+            className="rounded-2xl border border-[#ded9ce] bg-white shadow-sm"
           />
 
-          <Panel position="bottom-center" className="mb-4">
+          <Panel position="bottom-center" className="mb-5">
             <div className="relative">
               {showPicker && (
-                <div className="absolute bottom-full mb-4 left-1/2 -translate-x-1/2 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg shadow-xl p-2 w-48 flex flex-col gap-1 z-50">
-                  <button
-                    onClick={() => handleAddNode("crop_image", "Crop Image")}
-                    className="text-left px-3 py-2 text-sm text-gray-300 hover:bg-[#2A2A2A] hover:text-white rounded transition-colors"
-                  >
-                    Crop Image
-                  </button>
-                  <button
-                    onClick={() => handleAddNode("gemini", "Gemini 3.1 Pro")}
-                    className="text-left px-3 py-2 text-sm text-gray-300 hover:bg-[#2A2A2A] hover:text-white rounded transition-colors"
-                  >
-                    Gemini 3.1 Pro
-                  </button>
+                <div className="absolute bottom-full left-1/2 z-50 mb-4 flex w-[280px] -translate-x-1/2 flex-col gap-2 rounded-3xl border border-[#ded9ce] bg-white p-3 shadow-[0_18px_50px_rgba(27,26,23,0.16)]">
+                  <div className="flex items-center gap-2 rounded-2xl border border-[#ebe6dc] bg-[#faf8f3] px-3 py-2">
+                    <Search className="h-4 w-4 text-[#8f887b]" />
+                    <input
+                      value={query}
+                      onChange={(event) => setQuery(event.target.value)}
+                      placeholder="Search nodes"
+                      className="w-full bg-transparent text-sm text-[#1b1a17] outline-none placeholder:text-[#9d9487]"
+                    />
+                  </div>
+                  <div className="px-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#9d9487]">
+                    Add Node
+                  </div>
+                  {pickerItems.map((item) => (
+                    <button
+                      key={item.type}
+                      onClick={() => handleAddNode(item.type, item.label)}
+                      className="flex items-center justify-between rounded-2xl px-3 py-3 text-left transition-colors hover:bg-[#f4f1ea]"
+                    >
+                      <span className="text-sm font-medium text-[#1b1a17]">
+                        {item.label}
+                      </span>
+                      <span className="rounded-full bg-[#f0ece4] px-2 py-1 text-[11px] font-medium text-[#6f675d]">
+                        {item.category}
+                      </span>
+                    </button>
+                  ))}
                 </div>
               )}
               <button
                 onClick={() => setShowPicker(!showPicker)}
-                className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white p-3 rounded-full shadow-lg transition-transform hover:scale-105"
+                className="rounded-full bg-[#111111] p-3 text-white shadow-lg transition-transform hover:scale-105 hover:bg-[#23201b]"
               >
                 <Plus className="w-6 h-6" />
               </button>

@@ -26,13 +26,15 @@ interface WorkflowState {
   setWorkflowId: (id: string) => void;
   setNodes: (nodes: Node[]) => void;
   setEdges: (edges: Edge[]) => void;
+  resetWorkflow: (nodes: Node[], edges: Edge[]) => void;
   onNodesChange: OnNodesChange<Node>;
   onEdgesChange: OnEdgesChange;
   onConnect: OnConnect;
   addNode: (node: Node) => void;
-  updateNode: (id: string, data: any) => void;
+  updateNode: (id: string, data: Record<string, unknown>) => void;
   removeNode: (id: string) => void;
   setRunStatus: (nodeId: string, status: WorkflowStatus) => void;
+  setNodeOutput: (nodeId: string, output: Record<string, unknown>) => void;
   
   // Undo/Redo
   pushHistory: () => void;
@@ -53,6 +55,15 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   setNodes: (nodes) => set({ nodes }),
   
   setEdges: (edges) => set({ edges }),
+
+  resetWorkflow: (nodes, edges) =>
+    set({
+      nodes,
+      edges,
+      history: [],
+      historyIndex: -1,
+      selectedNodes: [],
+    }),
 
   onNodesChange: (changes: NodeChange<Node>[]) => {
     set({
@@ -110,6 +121,14 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     set({
       nodes: get().nodes.map((node) =>
         node.id === nodeId ? { ...node, data: { ...node.data, status } } : node
+      ),
+    });
+  },
+
+  setNodeOutput: (nodeId, output) => {
+    set({
+      nodes: get().nodes.map((node) =>
+        node.id === nodeId ? { ...node, data: { ...node.data, ...output } } : node
       ),
     });
   },

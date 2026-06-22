@@ -2,130 +2,143 @@
 
 import { useState } from "react";
 import { Handle, Position } from "@xyflow/react";
+import { ChevronDown, ChevronRight, Settings2, Sparkles } from "lucide-react";
 import { useWorkflowStore } from "@/store/workflow-store";
-import { Sparkles, Settings2, ChevronDown, ChevronRight } from "lucide-react";
 
-export function GeminiNode({ id, data }: any) {
+export function GeminiNode({
+  id,
+  data,
+}: {
+  id: string;
+  data: {
+    fallback?: boolean;
+    model?: string;
+    response?: string;
+    status?: string;
+  };
+}) {
   const { updateNode } = useWorkflowStore();
   const [showSettings, setShowSettings] = useState(false);
   const status = data.status || "idle";
-
-  const model = data.model || "gemini-3.1-pro";
-  const response = data.response || null;
+  const model = data.model || "gemini-2.0-flash";
+  const response = data.response || "";
+  const fallback = data.fallback || false;
 
   return (
-    <div className={`bg-canvas-node border border-canvas-border rounded-lg min-w-[320px] shadow-lg ${status === "running" ? "animate-pulse-glow" : ""}`}>
-      {/* Header */}
-      <div className="flex items-center justify-between p-3 border-b border-canvas-border">
+    <div
+      className={`min-w-[330px] rounded-[24px] border border-[#ddd7cb] bg-white shadow-[0_12px_40px_rgba(27,26,23,0.08)] ${
+        status === "running" ? "animate-pulse-glow" : ""
+      }`}
+    >
+      <div className="flex items-center justify-between border-b border-[#ece6db] p-4">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded bg-[#2A2A2A] flex items-center justify-center">
-            <Sparkles className="w-3 h-3 text-brand-purple" />
+          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#f3efe7]">
+            <Sparkles className="h-3 w-3 text-brand-purple" />
           </div>
           <select
             value={model}
-            onChange={(e) => updateNode(id, { model: e.target.value })}
-            className="bg-transparent text-white font-medium text-sm outline-none focus:ring-1 focus:ring-brand-purple rounded px-1 nodrag"
+            onChange={(event) => updateNode(id, { model: event.target.value })}
+            className="nodrag rounded px-1 text-sm font-semibold text-[#171511] outline-none focus:ring-1 focus:ring-brand-purple"
           >
-            <option value="gemini-2.0-flash" className="bg-[#1A1A1A]">Gemini 2.0 Flash</option>
-            <option value="gemini-2.0-flash-lite" className="bg-[#1A1A1A]">Gemini 2.0 Flash Lite</option>
-            <option value="gemini-1.5-flash" className="bg-[#1A1A1A]">Gemini 1.5 Flash</option>
+            <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+            <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash Lite</option>
+            <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
           </select>
         </div>
       </div>
 
-      <div className="p-4 flex flex-col gap-4">
-        {/* Inputs */}
+      <div className="flex flex-col gap-4 p-4">
         <div className="flex flex-col gap-3">
-          <div className="relative flex items-center h-6">
+          <div className="relative flex h-6 items-center">
             <Handle
               type="target"
               position={Position.Left}
               id="prompt"
-              className="w-3 h-3 bg-brand-purple !border-2 !border-[#0F0F0F] left-[-22px]"
+              className="!left-[-22px] !h-3 !w-3 !border-2 !border-white bg-brand-purple"
             />
-            <span className="text-xs font-medium text-white">Prompt <span className="text-red-400">*</span></span>
+            <span className="text-xs font-medium text-[#171511]">
+              Prompt <span className="text-red-400">*</span>
+            </span>
           </div>
 
-          <div className="relative flex items-center h-6">
+          <div className="relative flex h-6 items-center">
             <Handle
               type="target"
               position={Position.Left}
               id="system_prompt"
-              className="w-3 h-3 bg-brand-purple !border-2 !border-[#0F0F0F] left-[-22px]"
+              className="!left-[-22px] !h-3 !w-3 !border-2 !border-white bg-brand-purple"
             />
-            <span className="text-xs font-medium text-gray-300">System Prompt</span>
+            <span className="text-xs font-medium text-[#625b52]">
+              System Prompt
+            </span>
           </div>
 
-          <div className="relative flex items-center h-6">
+          <div className="relative flex h-6 items-center">
             <Handle
               type="target"
               position={Position.Left}
               id="image_vision"
-              className="w-3 h-3 bg-brand-purple !border-2 !border-[#0F0F0F] left-[-22px]"
+              className="!left-[-22px] !h-3 !w-3 !border-2 !border-white bg-brand-purple"
             />
-            <span className="text-xs font-medium text-gray-300">Image (Vision)</span>
+            <span className="text-xs font-medium text-[#625b52]">
+              Image (Vision)
+            </span>
           </div>
         </div>
 
-        {/* Collapsed Settings */}
-        <div className="border border-[#2A2A2A] rounded bg-[#0F0F0F] overflow-hidden">
+        <div className="overflow-hidden rounded-[18px] border border-[#ece6db] bg-[#faf8f3]">
           <button
-            onClick={() => setShowSettings(!showSettings)}
-            className="w-full flex items-center justify-between p-2 text-xs text-gray-400 hover:text-white transition-colors"
+            onClick={() => setShowSettings((current) => !current)}
+            className="flex w-full items-center justify-between p-2 text-xs text-[#6f675d] transition-colors hover:text-[#171511]"
           >
             <div className="flex items-center gap-2">
-              <Settings2 className="w-3 h-3" />
+              <Settings2 className="h-3 w-3" />
               <span>Advanced Settings</span>
             </div>
-            {showSettings ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+            {showSettings ? (
+              <ChevronDown className="h-3 w-3" />
+            ) : (
+              <ChevronRight className="h-3 w-3" />
+            )}
           </button>
-          
-          {showSettings && (
-            <div className="p-3 border-t border-[#2A2A2A] flex flex-col gap-3">
-              <div className="relative flex items-center h-5">
-                <Handle
-                  type="target"
-                  position={Position.Left}
-                  id="video"
-                  className="w-2.5 h-2.5 bg-brand-purple !border-2 !border-[#0F0F0F] left-[-17px]"
-                />
-                <span className="text-xs text-gray-400">Video</span>
-              </div>
-              <div className="relative flex items-center h-5">
-                <Handle
-                  type="target"
-                  position={Position.Left}
-                  id="audio"
-                  className="w-2.5 h-2.5 bg-brand-purple !border-2 !border-[#0F0F0F] left-[-17px]"
-                />
-                <span className="text-xs text-gray-400">Audio</span>
-              </div>
-              <div className="relative flex items-center h-5">
-                <Handle
-                  type="target"
-                  position={Position.Left}
-                  id="file"
-                  className="w-2.5 h-2.5 bg-brand-purple !border-2 !border-[#0F0F0F] left-[-17px]"
-                />
-                <span className="text-xs text-gray-400">File</span>
-              </div>
+
+          {showSettings ? (
+            <div className="flex flex-col gap-3 border-t border-[#ece6db] p-3">
+              {["video", "audio", "file"].map((handleId) => (
+                <div key={handleId} className="relative flex h-5 items-center">
+                  <Handle
+                    type="target"
+                    position={Position.Left}
+                    id={handleId}
+                    className="!left-[-17px] !h-2.5 !w-2.5 !border-2 !border-[#faf8f3] bg-brand-purple"
+                  />
+                  <span className="text-xs capitalize text-[#6f675d]">
+                    {handleId}
+                  </span>
+                </div>
+              ))}
             </div>
-          )}
+          ) : null}
         </div>
 
-        {/* Output */}
-        {response && (
-          <div className="mt-2 p-2 bg-[#0F0F0F] border border-[#2A2A2A] rounded text-xs text-gray-300 max-h-32 overflow-y-auto">
+        {response ? (
+          <div className="max-h-32 overflow-y-auto rounded-[18px] border border-[#ece6db] bg-[#fbfaf6] p-3 text-xs text-[#2f2a24]">
             {response}
           </div>
-        )}
+        ) : null}
+
+        {fallback ? (
+          <div className="text-[11px] font-medium text-[#9a6b2f]">
+            Fallback response used because the Gemini quota is currently unavailable.
+          </div>
+        ) : null}
       </div>
 
       <Handle
         type="source"
         position={Position.Right}
         id="response"
-        className="w-3 h-3 bg-brand-purple !border-2 !border-[#0F0F0F] right-[-6px]"
+        className="!right-[-6px] !h-3 !w-3 !border-2 !border-white bg-brand-purple"
       />
     </div>
   );

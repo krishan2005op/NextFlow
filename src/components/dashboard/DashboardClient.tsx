@@ -1,16 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { SignOutButton, UserButton } from "@clerk/nextjs";
+import {
+  CheckCircle2,
+  Clock,
+  LogOut,
+  Pencil,
+  Play,
+  Plus,
+  Trash2,
+  XCircle,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Plus, MoreVertical, Pencil, Trash2, Play, CheckCircle2, XCircle, Clock } from "lucide-react";
-import { formatDistanceToNow } from "date-fns"; // Wait, date-fns is not listed in dependencies, I'll use standard Intl API instead
 
 type WorkflowStatus = "idle" | "running" | "success" | "failed";
 
 interface Workflow {
   id: string;
   name: string;
-  status: WorkflowStatus;
+  status?: WorkflowStatus;
   updatedAt: string;
 }
 
@@ -22,22 +31,24 @@ export function DashboardClient() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
 
-  const fetchWorkflows = async () => {
-    try {
-      const res = await fetch("/api/workflows");
-      if (res.ok) {
-        const data = await res.json();
-        setWorkflows(data);
-      }
-    } catch (error) {
-      console.error("Failed to fetch workflows", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchWorkflows();
+    const load = async () => {
+      try {
+        const res = await fetch("/api/workflows");
+        if (!res.ok) {
+          return;
+        }
+
+        const data = (await res.json()) as Workflow[];
+        setWorkflows(data);
+      } catch (error) {
+        console.error("Failed to fetch workflows", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void load();
   }, []);
 
   const createWorkflow = async () => {
@@ -48,10 +59,13 @@ export function DashboardClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: "Untitled Workflow" }),
       });
-      if (res.ok) {
-        const newWorkflow = await res.json();
-        router.push(`/workflow/${newWorkflow.id}`);
+
+      if (!res.ok) {
+        return;
       }
+
+      const newWorkflow = (await res.json()) as Workflow;
+      router.push(`/workflow/${newWorkflow.id}`);
     } catch (error) {
       console.error("Failed to create workflow", error);
     } finally {
@@ -60,13 +74,14 @@ export function DashboardClient() {
   };
 
   const deleteWorkflow = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this workflow?")) return;
+    if (!confirm("Delete this workflow?")) {
+      return;
+    }
+
     try {
-      const res = await fetch(`/api/workflows/${id}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(`/api/workflows/${id}`, { method: "DELETE" });
       if (res.ok) {
-        setWorkflows((prev) => prev.filter((w) => w.id !== id));
+        setWorkflows((current) => current.filter((workflow) => workflow.id !== id));
       }
     } catch (error) {
       console.error("Failed to delete workflow", error);
@@ -78,18 +93,24 @@ export function DashboardClient() {
       setEditingId(null);
       return;
     }
+
     try {
       const res = await fetch(`/api/workflows/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: editName }),
+        body: JSON.stringify({ name: editName.trim() }),
       });
-      if (res.ok) {
-        const updated = await res.json();
-        setWorkflows((prev) =>
-          prev.map((w) => (w.id === id ? { ...w, name: updated.name } : w))
-        );
+
+      if (!res.ok) {
+        return;
       }
+
+      const updated = (await res.json()) as Workflow;
+      setWorkflows((current) =>
+        current.map((workflow) =>
+          workflow.id === id ? { ...workflow, name: updated.name } : workflow,
+        ),
+      );
     } catch (error) {
       console.error("Failed to rename workflow", error);
     } finally {
@@ -98,120 +119,154 @@ export function DashboardClient() {
   };
 
   const getStatusBadge = (status: WorkflowStatus = "idle") => {
-    switch (status) {
-      case "running":
-        return <span className="flex items-center gap-1 text-yellow-400 bg-yellow-400/10 px-2 py-1 rounded text-xs font-medium"><Play className="w-3 h-3" /> Running</span>;
-      case "success":
-        return <span className="flex items-center gap-1 text-green-400 bg-green-400/10 px-2 py-1 rounded text-xs font-medium"><CheckCircle2 className="w-3 h-3" /> Success</span>;
-      case "failed":
-        return <span className="flex items-center gap-1 text-red-400 bg-red-400/10 px-2 py-1 rounded text-xs font-medium"><XCircle className="w-3 h-3" /> Failed</span>;
-      default:
-        return <span className="flex items-center gap-1 text-gray-400 bg-gray-400/10 px-2 py-1 rounded text-xs font-medium"><Clock className="w-3 h-3" /> Idle</span>;
+    if (status === "running") {
+      return (
+        <span className="flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
+          <Play className="h-3 w-3" />
+          Running
+        </span>
+      );
     }
+
+    if (status === "success") {
+      return (
+        <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
+          <CheckCircle2 className="h-3 w-3" />
+          Success
+        </span>
+      );
+    }
+
+    if (status === "failed") {
+      return (
+        <span className="flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700">
+          <XCircle className="h-3 w-3" />
+          Failed
+        </span>
+      );
+    }
+
+    return (
+      <span className="flex items-center gap-1 rounded-full bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-600">
+        <Clock className="h-3 w-3" />
+        Idle
+      </span>
+    );
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat("en-US", {
+  const formatDate = (dateString: string) =>
+    new Intl.DateTimeFormat("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
       hour: "numeric",
       minute: "2-digit",
-    }).format(date);
-  };
+    }).format(new Date(dateString));
 
   return (
-    <div className="min-h-screen bg-[#0F0F0F] text-white p-8">
-      <div className="max-w-5xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-2xl font-semibold">My Workflows</h1>
-          <button
-            onClick={createWorkflow}
-            disabled={creating}
-            className="flex items-center gap-2 bg-[#7C3AED] hover:bg-[#6D28D9] transition-colors px-4 py-2 rounded-md font-medium disabled:opacity-50"
-          >
-            <Plus className="w-4 h-4" />
-            {creating ? "Creating..." : "Create Workflow"}
-          </button>
-        </div>
-
-        {loading ? (
-          <div className="text-center py-20 text-gray-400">Loading workflows...</div>
-        ) : workflows.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-32 border border-[#2A2A2A] rounded-lg bg-[#1A1A1A]">
-            <div className="bg-[#2A2A2A] p-4 rounded-full mb-4">
-              <Plus className="w-8 h-8 text-gray-400" />
+    <div className="min-h-screen bg-[#f3f1ec] px-6 py-6 text-[#171511]">
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-8 flex items-center justify-between rounded-[28px] border border-[#e1dbd0] bg-white px-6 py-5 shadow-[0_12px_32px_rgba(27,26,23,0.06)]">
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#93897c]">
+              NextFlow
             </div>
-            <h2 className="text-lg font-medium mb-2">No workflows yet</h2>
-            <p className="text-gray-400 mb-6">Create your first AI workflow to get started.</p>
+            <h1 className="mt-1 text-2xl font-semibold">My workflows</h1>
+          </div>
+          <div className="flex items-center gap-3">
             <button
               onClick={createWorkflow}
               disabled={creating}
-              className="bg-[#7C3AED] hover:bg-[#6D28D9] px-4 py-2 rounded-md font-medium transition-colors"
+              className="flex items-center gap-2 rounded-full bg-[#111111] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#23201b] disabled:opacity-50"
             >
-              Create Workflow
+              <Plus className="h-4 w-4" />
+              {creating ? "Creating..." : "New workflow"}
             </button>
+            <UserButton />
+            <SignOutButton redirectUrl="/sign-in">
+              <button className="flex h-9 w-9 items-center justify-center rounded-full border border-[#ddd7cb] bg-white text-[#625b52] transition-colors hover:bg-[#f3efe7] hover:text-[#171511]">
+                <LogOut className="h-4 w-4" />
+              </button>
+            </SignOutButton>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="rounded-[28px] border border-[#e1dbd0] bg-white px-6 py-16 text-center text-sm text-[#7f766a] shadow-[0_12px_32px_rgba(27,26,23,0.06)]">
+            Loading workflows...
+          </div>
+        ) : workflows.length === 0 ? (
+          <div className="rounded-[28px] border border-[#e1dbd0] bg-white px-6 py-20 text-center shadow-[0_12px_32px_rgba(27,26,23,0.06)]">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#f4f1ea]">
+              <Plus className="h-6 w-6 text-[#7b7368]" />
+            </div>
+            <h2 className="text-lg font-semibold">No workflows yet</h2>
+            <p className="mt-2 text-sm text-[#7f766a]">
+              Start with a blank canvas and add nodes as you go.
+            </p>
           </div>
         ) : (
           <div className="grid gap-4">
             {workflows.map((workflow) => (
               <div
                 key={workflow.id}
-                className="group flex items-center justify-between p-4 rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] hover:border-[#3A3A3A] transition-colors"
+                className="group flex items-center justify-between rounded-[24px] border border-[#e1dbd0] bg-white px-5 py-4 shadow-[0_10px_28px_rgba(27,26,23,0.05)]"
               >
-                <div className="flex items-center gap-4 flex-1 cursor-pointer" onClick={() => router.push(`/workflow/${workflow.id}`)}>
-                  <div className="w-10 h-10 rounded bg-[#2A2A2A] flex items-center justify-center">
-                    <Play className="w-5 h-5 text-gray-400" />
+                <div
+                  className="flex flex-1 cursor-pointer items-center gap-4"
+                  onClick={() => router.push(`/workflow/${workflow.id}`)}
+                >
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#f4f1ea]">
+                    <Play className="h-5 w-5 text-[#575046]" />
                   </div>
                   <div>
                     {editingId === workflow.id ? (
                       <input
-                        type="text"
                         value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
+                        onChange={(event) => setEditName(event.target.value)}
                         onBlur={() => renameWorkflow(workflow.id)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") renameWorkflow(workflow.id);
-                          if (e.key === "Escape") setEditingId(null);
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            void renameWorkflow(workflow.id);
+                          }
+                          if (event.key === "Escape") {
+                            setEditingId(null);
+                          }
                         }}
-                        className="bg-[#2A2A2A] text-white px-2 py-1 rounded outline-none focus:ring-2 focus:ring-[#7C3AED] border-none"
+                        className="rounded-xl border border-[#ddd7cb] bg-[#fbfaf6] px-3 py-1.5 text-sm outline-none focus:border-brand-purple"
                         autoFocus
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={(event) => event.stopPropagation()}
                       />
                     ) : (
-                      <h3 className="font-medium text-lg">{workflow.name}</h3>
+                      <h3 className="text-base font-semibold">{workflow.name}</h3>
                     )}
-                    <p className="text-sm text-gray-400 mt-1">
-                      Edited {formatDate(workflow.updatedAt)}
+                    <p className="mt-1 text-sm text-[#7f766a]">
+                      Updated {formatDate(workflow.updatedAt)}
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-4">
                   {getStatusBadge(workflow.status)}
-                  
-                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
+                      onClick={(event) => {
+                        event.stopPropagation();
                         setEditName(workflow.name);
                         setEditingId(workflow.id);
                       }}
-                      className="p-2 hover:bg-[#2A2A2A] rounded text-gray-400 hover:text-white transition-colors"
-                      title="Rename"
+                      className="rounded-full border border-[#e7e1d7] p-2 text-[#6a6258] hover:bg-[#f3efe7]"
                     >
-                      <Pencil className="w-4 h-4" />
+                      <Pencil className="h-4 w-4" />
                     </button>
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteWorkflow(workflow.id);
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void deleteWorkflow(workflow.id);
                       }}
-                      className="p-2 hover:bg-[#2A2A2A] rounded text-gray-400 hover:text-red-400 transition-colors"
-                      title="Delete"
+                      className="rounded-full border border-[#e7e1d7] p-2 text-[#8b4d4d] hover:bg-[#fbf0f0]"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
