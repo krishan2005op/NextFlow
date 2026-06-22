@@ -115,8 +115,8 @@ export function HistorySidebar({ workflowId }: { workflowId: string }) {
   }
 
   return (
-    <div className="flex h-full w-[360px] flex-col border-l border-[#e3ddd1] bg-[#fbfaf6]">
-      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#ece6db] bg-[#fbfaf6] px-4 py-4">
+    <div className="flex h-full w-[420px] flex-col border-l border-[#e3ddd1] bg-[#fbfaf6]">
+      <div className="sticky top-0 z-10 flex justify-between items-start border-b border-[#ece6db] bg-[#fbfaf6] px-4 py-4">
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#90877a]">
             History
@@ -165,14 +165,17 @@ export function HistorySidebar({ workflowId }: { workflowId: string }) {
                       {run.scope === "full" ? "Full workflow" : "Partial run"}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-[#857c70]">
-                    <span>{getDuration(run.startedAt, run.finishedAt)}</span>
-                    {isExpanded ? (
-                      <ChevronDown className="h-4 w-4" />
-                    ) : (
-                      <ChevronLeft className="h-4 w-4 rotate-180" />
-                    )}
-                  </div>
+                  <div className="flex flex-col items-end gap-2">
+    <span className="text-xs font-medium text-[#625b52]">
+        {getDuration(run.startedAt, run.finishedAt)}
+    </span>
+
+    {isExpanded ? (
+        <ChevronDown className="h-4 w-4 text-[#857c70]" />
+    ) : (
+        <ChevronRight className="h-4 w-4 text-[#857c70]" />
+    )}
+</div>
                 </button>
 
                 {isExpanded ? (
