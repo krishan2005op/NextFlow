@@ -152,31 +152,30 @@ export function HistorySidebar({ workflowId }: { workflowId: string }) {
                 className="overflow-hidden rounded-[24px] border border-[#e7e1d7] bg-white shadow-[0_8px_24px_rgba(27,26,23,0.06)]"
               >
                 <button
-                  onClick={() => setExpandedId(isExpanded ? null : run.id)}
-                  className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-[#faf7f0]"
-                >
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-[#171511]">
-                      {getStatusIcon(run.status)}
-                      Run #{runNumber}
-                    </div>
-                    <div className="text-xs text-[#857c70]">
-                      {formatDate(run.startedAt)} ·{" "}
-                      {run.scope === "full" ? "Full workflow" : "Partial run"}
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
+  onClick={() => setExpandedId(isExpanded ? null : run.id)}
+  className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-[#faf7f0]"
+>
+  <div className="flex min-w-0 flex-1 flex-col gap-1">
+    <div className="flex items-center gap-2 text-sm font-semibold text-[#171511]">
+      {getStatusIcon(run.status)}
+      <span className="truncate">Run #{runNumber}</span>
+    </div>
+    <div className="truncate text-xs text-[#857c70]">
+      {formatDate(run.startedAt)} ·{" "}
+      {run.scope === "full" ? "Full workflow" : "Partial run"}
+    </div>
+  </div>
+  <div className="flex flex-shrink-0 flex-col items-end gap-2">
     <span className="text-xs font-medium text-[#625b52]">
-        {getDuration(run.startedAt, run.finishedAt)}
+      {getDuration(run.startedAt, run.finishedAt)}
     </span>
-
     {isExpanded ? (
-        <ChevronDown className="h-4 w-4 text-[#857c70]" />
+      <ChevronDown className="h-4 w-4 text-[#857c70]" />
     ) : (
-        <ChevronRight className="h-4 w-4 text-[#857c70]" />
+      <ChevronRight className="h-4 w-4 text-[#857c70]" />
     )}
-</div>
-                </button>
+  </div>
+</button>
 
                 {isExpanded ? (
                   <div className="border-t border-[#f0eadf] bg-[#fcfbf8] px-4 py-3">
