@@ -101,37 +101,6 @@ At a high level, NextFlow relies on a decoupled architecture to ensure that the 
 
 ---
 
-##  Issues I Faced During Deployment
-
-This is a personal account of the real problems I ran into while trying to get this project live. I am documenting them honestly because I think debugging is just as important a skill as building.
-
----
-
-### Issue 1 — `triggerAndWait can only be used from inside a task.run()`
-
-I was calling `tasks.triggerAndWait()` directly from a Next.js API route. Turns out in Trigger.dev v3 this function can **only** be called from inside another background task — not from a serverless function. I kept getting this error on every Crop Image and Gemini node run. I partially worked around it but the execution flow still needs more debugging time.
-
----
-
-### Issue 2 — `Unexpected token '<', "<!DOCTYPE …" is not valid JSON`
-
-This one confused me for a long time. The error looks like a JSON parsing error but it was actually coming from the Trigger.dev polling code. When the API returned an HTML error page (due to auth issues), my code was calling `.json()` directly on it — which then crashed. I added a `res.ok` guard but the issue kept surfacing on different nodes.
-
----
-
-### Issue 3 — `[404 Not Found] models/gemini-1.5-pro is not found`
-
-I set up the Gemini node to use `gemini-1.5-pro` which was the standard model when I started the project. By the time I deployed, Google had deprecated it. I updated all references to `gemini-2.0-flash` but due to time constraints I could not fully verify if the end-to-end flow works on the live deployment.
-
----
-
-### Issue 4 — Trigger.dev deploy failing with `keepalive ping failed`
-
-Every time I ran `npx trigger.dev@latest deploy`, the build would get 80% done and then crash with a network timeout. My home Wi-Fi was dropping the TCP connection to Trigger's remote build servers. I eventually got it to work by switching to a mobile hotspot but it was a frustrating blocker.
-
----
-
->  **Note:** I ran out of time to fully resolve all of the above on the live deployment. The core architecture — the canvas, DAG execution engine, SSE streaming, authentication, and database — all work correctly. The remaining issues are specifically around the Trigger.dev cloud integration and the live API environment. Given more time (or a stable network), these would be straightforward to resolve.
 
 ## 📹 Demo
 
