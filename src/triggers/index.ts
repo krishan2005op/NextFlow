@@ -125,7 +125,7 @@ export const cropImageTask = task({
 });
 
 export const geminiTask = task({
-  id: "gemini-task",
+  id: "gemini-task-v2",
   run: async (payload: {
     prompt: string;
     systemPrompt?: string;

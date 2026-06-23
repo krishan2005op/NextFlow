@@ -326,7 +326,7 @@ export async function POST(req: NextRequest) {
               console.log("Database model:", node.data?.model);
               console.log("Sanitized:", sanitizeModel(node.data?.model));
               const handle = await tasks.trigger<typeof geminiTask>(
-                "gemini-task",
+                "gemini-task-v2",
                 {
                   prompt,
                   systemPrompt,
