@@ -101,6 +101,21 @@ At a high level, NextFlow relies on a decoupled architecture to ensure that the 
 
 ---
 
+## Known Issue
+
+The application is fully functional in both local and deployed environments.
+
+Occasionally, Gemini API requests may fail with the following error:
+
+```text
+503 Service Unavailable
+This model is currently experiencing high demand.
+```
+
+This is a temporary issue from Google's Gemini API and is not caused by the application. When Google's servers are under high load, requests may intermittently fail with a `503` response.
+
+The workflow includes fallback handling for these cases, and retrying the request after a short delay typically succeeds.
+
 
 ## 📹 Demo
 
