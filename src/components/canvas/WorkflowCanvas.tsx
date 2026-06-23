@@ -123,7 +123,7 @@ export function WorkflowCanvas({
           : {
               label,
               status: "idle",
-              model: "gemini-2.0-flash",
+              model: "gemini-2.5-flash",
               inputs: { system_prompt: "" },
             },
     };

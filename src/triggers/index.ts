@@ -142,6 +142,7 @@ export const geminiTask = task({
 
     try {
       const genAI = new GoogleGenerativeAI(apiKey);
+      console.log("PAYLOAD MODEL =", payload.model);
       const model = genAI.getGenerativeModel({
         model: payload.model || "gemini-2.5-flash",
         systemInstruction: payload.systemPrompt,
