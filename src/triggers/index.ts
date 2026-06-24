@@ -6,8 +6,12 @@ import ffmpegStatic from "ffmpeg-static";
 import fs from "fs/promises";
 import os from "os";
 import path from "path";
+import ffprobe from "ffprobe-static";
+
 
 ffmpeg.setFfmpegPath(ffmpegStatic as string);
+ffmpeg.setFfprobePath(ffprobe.path);
+
 
 function buildQuotaFallback(prompt: string, systemPrompt?: string) {
   const compactPrompt = prompt.replace(/\s+/g, " ").trim();
