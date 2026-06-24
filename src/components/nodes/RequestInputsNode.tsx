@@ -75,7 +75,9 @@ export function RequestInputsNode({
         JSON.stringify({
           auth: { key: process.env.NEXT_PUBLIC_TRANSLOADIT_KEY },
           steps: {
-            import: { robot: "/upload/handle" },
+            ":original": {
+              robot: "/upload/handle",
+            },
           },
         }),
       );
@@ -86,14 +88,17 @@ export function RequestInputsNode({
         body: formData,
       });
       const result = (await res.json()) as {
+      
         uploads?: Array<{ ssl_url?: string }>;
         results?: { import?: Array<{ ssl_url?: string }> };
       };
+      console.log("TRANSLOADIT RESPONSE", result);
       const uploadedUrl =
         result.uploads?.[0]?.ssl_url || result.results?.import?.[0]?.ssl_url;
 
+      console.log("IMAGE VALUE", uploadedUrl || preview);
       updateField(fieldId, {
-        value: uploadedUrl || preview,
+        value: uploadedUrl || "",
         preview,
         uploading: false,
         error: uploadedUrl ? undefined : "Upload fallback preview in use",
@@ -101,7 +106,7 @@ export function RequestInputsNode({
     } catch (error) {
       console.error("Transloadit upload error", error);
       updateField(fieldId, {
-        value: preview,
+        value: "",
         preview,
         uploading: false,
         error: "Upload failed. Using local preview.",
