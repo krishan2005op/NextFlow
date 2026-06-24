@@ -8,8 +8,8 @@ import os from "os";
 import path from "path";
 import ffprobe from "ffprobe-static";
 
-ffmpeg.setFfmpegPath(ffmpegStatic as string);
-ffmpeg.setFfprobePath(ffprobe.path);
+console.log("FFMPEG PATH =", ffmpegStatic);
+console.log("FFPROBE PATH =", ffprobe.path);
 ffmpeg.setFfmpegPath(ffmpegStatic as string);
 ffmpeg.setFfprobePath(ffprobe.path);
 
