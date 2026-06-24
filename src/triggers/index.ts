@@ -7,9 +7,10 @@ import fs from "fs/promises";
 import os from "os";
 import path from "path";
 import ffprobe from "ffprobe-static";
+import { logger } from "@trigger.dev/sdk/v3";
 
-console.log("FFMPEG PATH =", ffmpegStatic);
-console.log("FFPROBE PATH =", ffprobe.path);
+logger.info("FFPROBE", { path: ffprobe.path });
+logger.info("FFMPEG", { path: ffmpegStatic });
 ffmpeg.setFfmpegPath(ffmpegStatic as string);
 ffmpeg.setFfprobePath(ffprobe.path);
 
