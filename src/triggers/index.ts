@@ -12,7 +12,6 @@ import ffprobe from "ffprobe-static";
 ffmpeg.setFfmpegPath(ffmpegStatic as string);
 ffmpeg.setFfprobePath(ffprobe.path);
 
-
 function buildQuotaFallback(prompt: string, systemPrompt?: string) {
   const compactPrompt = prompt.replace(/\s+/g, " ").trim();
   const clippedPrompt =
