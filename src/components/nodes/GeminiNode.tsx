@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Handle, Position } from "@xyflow/react";
 import { ChevronDown, ChevronRight, Settings2, Sparkles, Trash2 } from "lucide-react";
-import { useWorkflowStore } from "@/store/workflow-store";
+import { useWorkflowStore,  } from "@/store/workflow-store";
 
 export function GeminiNode({
   id,
