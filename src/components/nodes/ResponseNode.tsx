@@ -43,11 +43,24 @@ export function ResponseNode({
   ) : result.startsWith("data:image/") ||
     result.startsWith("http://") ||
     result.startsWith("https://") ? (
-    <img
-      src={result}
-      alt="Workflow Output"
-      className="max-h-96 w-full rounded-lg object-contain"
-    />
+    <div className="flex gap-2">
+  <a
+    href={result}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="flex-1 rounded-lg border px-3 py-2 text-center text-sm"
+  >
+    Open
+  </a>
+
+  <a
+    href={result}
+    download="cropped-image.png"
+    className="flex-1 rounded-lg bg-brand-purple px-3 py-2 text-center text-sm text-white"
+  >
+    Download
+  </a>
+</div>
   ) : (
     result
   )}
