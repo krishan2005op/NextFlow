@@ -1,18 +1,9 @@
 import { task } from "@trigger.dev/sdk/v3";
 import { GoogleGenerativeAI, type Part } from "@google/generative-ai";
 import axios from "axios";
-import ffmpeg from "fluent-ffmpeg";
-import ffmpegStatic from "ffmpeg-static";
-import fs from "fs/promises";
-import os from "os";
-import path from "path";
-import ffprobe from "ffprobe-static";
-import { logger } from "@trigger.dev/sdk/v3";
+import sharp from "sharp";
 
-logger.info("FFPROBE", { path: ffprobe.path });
-logger.info("FFMPEG", { path: ffmpegStatic });
-ffmpeg.setFfmpegPath(ffmpegStatic as string);
-ffmpeg.setFfprobePath(ffprobe.path);
+
 
 function buildQuotaFallback(prompt: string, systemPrompt?: string) {
   const compactPrompt = prompt.replace(/\s+/g, " ").trim();
@@ -71,61 +62,56 @@ export const cropImageTask = task({
       buffer = Buffer.from(response.data, "binary");
     }
 
-    const tmpDir = os.tmpdir();
-    const inputPath = path.join(tmpDir, `input-${Date.now()}.png`);
-    const outputPath = path.join(tmpDir, `output-${Date.now()}.png`);
-
-    await fs.writeFile(inputPath, buffer);
-
-    const getMetadata = (): Promise<{ width: number; height: number }> =>
-      new Promise((resolve, reject) => {
-        ffmpeg.ffprobe(inputPath, (err, metadata) => {
-          if (err) {
-            return reject(err);
-          }
-
-          const stream = metadata.streams.find(
-            (entry) => entry.codec_type === "video",
-          );
-          resolve({
-            width: stream?.width || 1000,
-            height: stream?.height || 1000,
-          });
-        });
-      });
-
     try {
-      const meta = await getMetadata();
-      const cropW = Math.floor((width / 100) * meta.width);
-      const cropH = Math.floor((height / 100) * meta.height);
-      const cropX = Math.floor((x / 100) * meta.width);
-      const cropY = Math.floor((y / 100) * meta.height);
+  const image = sharp(buffer);
 
-      await new Promise<void>((resolve, reject) => {
-        ffmpeg(inputPath)
-          .videoFilters(`crop=${cropW}:${cropH}:${cropX}:${cropY}`)
-          .save(outputPath)
-          .on("end", () => resolve())
-          .on("error", reject);
-      });
+  const metadata = await image.metadata();
 
-      const outputBuffer = await fs.readFile(outputPath);
-      const base64 = outputBuffer.toString("base64");
-      const dataUri = `data:image/png;base64,${base64}`;
+  const imageWidth = metadata.width ?? 1000;
+  const imageHeight = metadata.height ?? 1000;
 
-      await new Promise((resolve) => setTimeout(resolve, 30000));
+  const cropX = Math.max(
+  0,
+  Math.floor((x / 100) * imageWidth)
+);
 
-      await fs.unlink(inputPath).catch(() => undefined);
-      await fs.unlink(outputPath).catch(() => undefined);
+const cropY = Math.max(
+  0,
+  Math.floor((y / 100) * imageHeight)
+);
 
-      return { croppedImageUrl: dataUri, fallback: false };
-    } catch (error) {
-      await fs.unlink(inputPath).catch(() => undefined);
-      await fs.unlink(outputPath).catch(() => undefined);
-      const message =
-        error instanceof Error ? error.message : "Unknown crop failure";
-      throw new Error(`Crop failed: ${message}`);
-    }
+const cropWidth = Math.min(
+  imageWidth - cropX,
+  Math.floor((width / 100) * imageWidth)
+);
+
+const cropHeight = Math.min(
+  imageHeight - cropY,
+  Math.floor((height / 100) * imageHeight)
+);
+
+  const croppedBuffer = await image
+    .extract({
+      left: cropX,
+      top: cropY,
+      width: cropWidth,
+      height: cropHeight,
+    })
+    .png()
+    .toBuffer();
+
+  const base64 = croppedBuffer.toString("base64");
+
+  return {
+    croppedImageUrl: `data:image/png;base64,${base64}`,
+    fallback: false,
+  };
+} catch (error) {
+  const message =
+    error instanceof Error ? error.message : "Unknown crop failure";
+
+  throw new Error(`Crop failed: ${message}`);
+}
   },
 });
 
