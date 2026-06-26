@@ -2,7 +2,7 @@
 
 import { Handle, Position, useNodeConnections } from "@xyflow/react";
 import { useWorkflowStore } from "@/store/workflow-store";
-import { Image as ImageIcon } from "lucide-react";
+import { Image as ImageIcon, Trash2 } from "lucide-react";
 
 type CropInputs = {
   x: number;
@@ -54,7 +54,7 @@ export function CropImageNode({
   id: string;
   data: { inputs?: Partial<CropInputs>; status?: string };
 }) {
-  const { updateNode } = useWorkflowStore();
+  const { updateNode, removeNode } = useWorkflowStore();
   const status = data.status || "idle";
 
   const inputs: CropInputs = {
@@ -74,12 +74,26 @@ export function CropImageNode({
 
   return (
     <div className={`min-w-[280px] rounded-[24px] border border-[#ddd7cb] bg-white shadow-[0_12px_40px_rgba(27,26,23,0.08)] ${status === "running" ? "animate-pulse-glow" : ""}`}>
-      <div className="flex items-center gap-2 border-b border-[#ece6db] p-4">
-        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#f3efe7]">
-          <ImageIcon className="w-3 h-3 text-brand-purple" />
-        </div>
-        <div className="text-sm font-semibold text-[#171511]">Crop Image</div>
-      </div>
+      <div className="flex items-center justify-between border-b border-[#ece6db] p-4">
+
+  <div className="flex items-center gap-2">
+    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#f3efe7]">
+      <ImageIcon className="w-3 h-3 text-brand-purple" />
+    </div>
+
+    <div className="text-sm font-semibold text-[#171511]">
+      Crop Image
+    </div>
+  </div>
+
+  <button
+    onClick={() => removeNode(id)}
+    className="rounded-full p-2 hover:bg-red-50"
+  >
+    <Trash2 className="h-4 w-4 text-red-500" />
+  </button>
+
+</div>
 
       <div className="p-4">
         <div className="flex items-center gap-2 mb-4 relative h-6">

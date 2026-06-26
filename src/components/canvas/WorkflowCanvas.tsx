@@ -43,6 +43,8 @@ export function WorkflowCanvas({
     resetWorkflow,
     setWorkflowId,
     addNode,
+    removeNode,
+    removeEdges,
     undo,
     redo,
   } = useWorkflowStore();
@@ -180,6 +182,8 @@ export function WorkflowCanvas({
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={handleConnect}
+          onEdgesDelete={removeEdges}
+          deleteKeyCode={["Delete", "Backspace"]}
           isValidConnection={isValidConnection}
           nodeTypes={nodeTypes}
           fitView

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Handle, Position } from "@xyflow/react";
-import { ChevronDown, ChevronRight, Settings2, Sparkles } from "lucide-react";
+import { ChevronDown, ChevronRight, Settings2, Sparkles, Trash2 } from "lucide-react";
 import { useWorkflowStore } from "@/store/workflow-store";
 
 export function GeminiNode({
@@ -17,7 +17,7 @@ export function GeminiNode({
     status?: string;
   };
 }) {
-  const { updateNode } = useWorkflowStore();
+  const { updateNode, removeNode } = useWorkflowStore();
   const [showSettings, setShowSettings] = useState(false);
   const status = data.status || "idle";
   const model = data.model || "gemini-2.5-flash";
@@ -31,20 +31,30 @@ export function GeminiNode({
       }`}
     >
       <div className="flex items-center justify-between border-b border-[#ece6db] p-4">
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#f3efe7]">
-            <Sparkles className="h-3 w-3 text-brand-purple" />
-          </div>
-          <select
-            value={model}
-            onChange={(event) => updateNode(id, { model: event.target.value })}
-            className="nodrag rounded px-1 text-sm font-semibold text-[#171511] outline-none focus:ring-1 focus:ring-brand-purple"
-          >
-            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-            <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</option>
-          </select>
-        </div>
-      </div>
+
+  <div className="flex items-center gap-2">
+    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#f3efe7]">
+      <Sparkles className="h-3 w-3 text-brand-purple" />
+    </div>
+
+    <select
+      value={model}
+      onChange={(event) => updateNode(id, { model: event.target.value })}
+      className="nodrag rounded px-1 text-sm font-semibold text-[#171511] outline-none focus:ring-1 focus:ring-brand-purple"
+    >
+      <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+      <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</option>
+    </select>
+  </div>
+
+  <button
+    onClick={() => removeNode(id)}
+    className="rounded-full p-2 transition hover:bg-red-50"
+  >
+    <Trash2 className="h-4 w-4 text-red-500" />
+  </button>
+
+</div>
 
       <div className="flex flex-col gap-4 p-4">
         <div className="flex flex-col gap-3">

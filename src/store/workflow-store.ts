@@ -33,6 +33,7 @@ interface WorkflowState {
   addNode: (node: Node) => void;
   updateNode: (id: string, data: Record<string, unknown>) => void;
   removeNode: (id: string) => void;
+  removeEdges: (edges: Edge[]) => void;
   setRunStatus: (nodeId: string, status: WorkflowStatus) => void;
   setNodeOutput: (nodeId: string, output: Record<string, unknown>) => void;
   
@@ -116,6 +117,17 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       edges: get().edges.filter((edge) => edge.source !== id && edge.target !== id),
     });
   },
+
+  removeEdges: (edgesToDelete) => {
+  get().pushHistory();
+
+  set({
+    edges: get().edges.filter(
+      (edge) =>
+        !edgesToDelete.some((e) => e.id === edge.id)
+    ),
+  });
+},
 
   setRunStatus: (nodeId, status) => {
     set({
