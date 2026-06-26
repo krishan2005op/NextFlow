@@ -166,7 +166,7 @@ export function RequestInputsNode({
                 onChange={(event) =>
                   updateField(field.id, { name: event.target.value })
                 }
-                className="w-2/3 border-b border-transparent bg-transparent text-xs font-semibold text-[#3f3932] outline-none focus:border-brand-purple"
+                className="nodrag nopan select-text w-2/3 border-b border-transparent bg-transparent text-xs font-semibold text-[#3f3932] outline-none focus:border-brand-purple"
               />
               <button
                 onClick={() => removeField(field.id)}
@@ -182,7 +182,7 @@ export function RequestInputsNode({
                 onChange={(event) =>
                   updateField(field.id, { value: event.target.value })
                 }
-                className="nodrag min-h-[88px] w-full resize-none rounded-2xl border border-[#e8e1d5] bg-white px-3 py-2 text-xs text-[#3f3932] outline-none focus:border-brand-purple"
+                className="nodrag nopan select-text min-h-[88px] w-full resize-none rounded-2xl border border-[#e8e1d5] bg-white px-3 py-2 text-xs text-[#3f3932] outline-none focus:border-brand-purple"
                 placeholder="Enter text..."
               />
             ) : (

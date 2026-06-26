@@ -35,7 +35,7 @@ export function ResponseNode({
           <span className="text-xs font-medium text-[#171511]">Result</span>
         </div>
 
-        <div className="mt-2 min-h-[72px] max-h-96 overflow-y-auto rounded-[18px] border border-[#ece6db] bg-[#fbfaf6] p-3 text-xs text-[#2f2a24] whitespace-pre-wrap break-words">
+        <div className="nodrag cursor-text mt-2 min-h-[72px] max-h-96 overflow-y-auto rounded-[18px] border border-[#ece6db] bg-[#fbfaf6] p-3 text-xs text-[#2f2a24] whitespace-pre-wrap break-words select-text">
   {!result ? (
     <span className="italic text-[#8b8276]">
       Workflow output will appear here...
