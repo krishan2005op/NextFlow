@@ -1,11 +1,23 @@
 import { defineConfig } from "@trigger.dev/sdk/v3";
+import { prismaExtension } from "@trigger.dev/build/extensions/prisma";
 
 export default defineConfig({
   project: "proj_fetkvoofzkkpemowwpal",
   runtime: "node",
   logLevel: "log",
-  // Maximum compute seconds a single run can use
+
   maxDuration: 300,
+
+  dirs: ["src/triggers"],
+
+  build: {
+    extensions: [
+      prismaExtension({
+        mode: "engine-only",
+      }),
+    ],
+  },
+
   retries: {
     enabledInDev: true,
     default: {
@@ -16,5 +28,4 @@ export default defineConfig({
       randomize: true,
     },
   },
-  dirs: ["src/triggers"],
 });

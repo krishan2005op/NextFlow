@@ -1,11 +1,13 @@
 import { RNetAuth } from "@rnet-ai/rnet-oauth-node";
 import { db } from "@/lib/db";
 
-const auth = new RNetAuth({
-  clientId: process.env.RNET_CLIENT_ID!,
-  clientSecret: process.env.RNET_CLIENT_SECRET!,
-  redirectUri: process.env.RNET_REDIRECT_URI!,
-});
+function getRNetAuth() {
+  return new RNetAuth({
+    clientId: process.env.RNET_CLIENT_ID!,
+    clientSecret: process.env.RNET_CLIENT_SECRET!,
+    redirectUri: process.env.RNET_REDIRECT_URI!,
+  });
+}
 
 export async function getValidAccessToken(userId: string) {
   const connection = await db.aIConnection.findUnique({
@@ -34,6 +36,8 @@ export async function getValidAccessToken(userId: string) {
   }
 
   console.log("========== REFRESHING RNET TOKEN ==========");
+
+  const auth = getRNetAuth();
 
   const refreshed = await auth.refreshAccessToken(
     connection.refreshToken
