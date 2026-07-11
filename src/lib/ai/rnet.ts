@@ -27,31 +27,69 @@ export class RNetProvider implements AIProvider {
       );
 
     
-    if (request.imageUrl) {
+    const parts: Array<
+  | {
+      text: string;
+    }
+  | {
+      fileData: {
+        fileUri: string;
+        mimeType: string;
+      };
+    }
+> = [
+  {
+    text: request.prompt,
+  },
+];
+
+if (request.imageUrl) {
   const url = Array.isArray(request.imageUrl)
     ? request.imageUrl[0]
     : request.imageUrl;
 
   const response = await fetch(url);
 
-  console.log("IMAGE STATUS:", response.status);
+  if (!response.ok) {
+    throw new Error("Failed to download image");
+  }
 
   const arrayBuffer = await response.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
 
-  console.log("IMAGE SIZE:", arrayBuffer.byteLength);
+  const mimeType =
+    response.headers.get("content-type") ?? "image/png";
+    console.log("STARTING FILE UPLOAD");
+
+  const upload = await ai.geminiFileUpload(
+    accessToken,
+    request.model || "gemini-2.5-flash-lite",
+    buffer,
+    mimeType,
+    "image"
+  );
+  console.log("UPLOAD SUCCESS");
+  console.log(upload);
+  console.log("========== RNET FILE ==========");
+  console.log(upload);
+  console.log("===============================");
+
+  parts.push({
+    fileData: {
+      fileUri: upload.fileReference,
+      mimeType: upload.mimeType,
+    },
+  });
 }
-    const payload = {
-      contents: [
-        {
-          role: "user",
-          parts: [
-            {
-              text: request.prompt,
-            },
-          ],
-        },
-      ],
-    };
+
+const payload = {
+  contents: [
+    {
+      role: "user",
+      parts,
+    },
+  ],
+};
 
     const response = await ai.chat(
       payload,

@@ -438,6 +438,9 @@ const aiProvider =
         sendUpdate({ type: "workflow_success" });
         controller.close();
       } catch (error) {
+        console.error("========== WORKFLOW ERROR ==========");
+        console.error(error);
+        console.error("====================================");
         const message =
           error instanceof Error ? error.message : "Workflow execution failed";
 
