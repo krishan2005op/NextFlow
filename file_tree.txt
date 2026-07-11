@@ -1,0 +1,89 @@
+.env.local
+.gitignore
+.trigger/
+  tmp/
+AGENTS.md
+CLAUDE.md
+eslint.config.mjs
+next-env.d.ts
+next.config.ts
+nextflow-dev.log
+package-lock.json
+package.json
+postcss.config.mjs
+prisma/
+  schema.prisma
+public/
+  file.svg
+  globe.svg
+  next.svg
+  vercel.svg
+  window.svg
+README.md
+src/
+  app/
+    (auth)/
+      sign-in/
+        [[...sign-in]]/
+          page.tsx
+      sign-up/
+        [[...sign-up]]/
+          page.tsx
+    (protected)/
+      dashboard/
+        page.tsx
+      layout.tsx
+      workflow/
+        [id]/
+          page.tsx
+    api/
+      fix-models/
+        route.ts
+      run/
+        route.ts
+      workflows/
+        [id]/
+          route.ts
+          runs/
+            route.ts
+        route.ts
+    favicon.ico
+    globals.css
+    layout.tsx
+    page.tsx
+  components/
+    canvas/
+      HistorySidebar.tsx
+      WorkflowCanvas.tsx
+      WorkflowHeader.tsx
+    dashboard/
+      DashboardClient.tsx
+    nodes/
+      CropImageNode.tsx
+      GeminiNode.tsx
+      index.tsx
+      RequestInputsNode.tsx
+      ResponseNode.tsx
+      ui/
+        CandidateLog.tsx
+  lib/
+    dag.ts
+    db.ts
+    utils.ts
+    validators.ts
+    workflow-defaults.ts
+    workflow-json.ts
+  proxy.ts
+  store/
+    workflow-store.ts
+  triggers/
+    index.ts
+  types/
+    ffprobe-static.d.ts
+    index.ts
+tailwind.config.ts
+trigger-dev.log
+trigger-worker.log
+trigger.config.ts
+tsconfig.json
+tsconfig.tsbuildinfo

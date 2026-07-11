@@ -23,7 +23,11 @@ interface Workflow {
   updatedAt: string;
 }
 
-export function DashboardClient() {
+export function DashboardClient({
+  rnetConnected,
+}: {
+  rnetConnected: boolean;
+}) {
   const router = useRouter();
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -174,14 +178,29 @@ export function DashboardClient() {
             <h1 className="mt-1 text-2xl font-semibold">My workflows</h1>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={createWorkflow}
-              disabled={creating}
-              className="flex items-center gap-2 rounded-full bg-[#111111] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#23201b] disabled:opacity-50"
-            >
-              <Plus className="h-4 w-4" />
-              {creating ? "Creating..." : "New workflow"}
-            </button>
+  {!rnetConnected ? (
+    <button
+      onClick={() => {
+        window.location.href = "/api/rnet/login";
+      }}
+      className="rounded-full bg-[#5B3DF5] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#4A2FE0]"
+    >
+      Connect RNet Wallet
+    </button>
+  ) : (
+    <div className="rounded-full border border-green-200 bg-green-50 px-4 py-2 text-sm font-medium text-green-700">
+      ✓ Connected to RNet
+    </div>
+  )}
+
+  <button
+    onClick={createWorkflow}
+    disabled={creating}
+    className="flex items-center gap-2 rounded-full bg-[#111111] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#23201b] disabled:opacity-50"
+  >
+    <Plus className="h-4 w-4" />
+    {creating ? "Creating..." : "New workflow"}
+  </button>
             <UserButton />
             <SignOutButton redirectUrl="/sign-in">
               <button className="flex h-9 w-9 items-center justify-center rounded-full border border-[#ddd7cb] bg-white text-[#625b52] transition-colors hover:bg-[#f3efe7] hover:text-[#171511]">

@@ -5,7 +5,8 @@ import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { topologicalSort } from "@/lib/dag";
 import { parseStoredJson } from "@/lib/workflow-json";
-import { cropImageTask, geminiTask } from "@/triggers";
+import { cropImageTask, aiTask } from "@/triggers";
+import { generateAI } from "@/lib/ai/provider";
 
 type StoredNode = {
   id: string;
@@ -32,23 +33,31 @@ type TriggerRunOutput = {
   fallback?: boolean;
 };
 
-const SAFE_MODEL = "gemini-2.5-flash";
-const GEMINI_TRIGGER_TIMEOUT_MS = 60_000;
+const GEMINI_SAFE_MODEL = "gemini-2.5-flash";
+const RNET_SAFE_MODEL = "gemini-2.5-flash-lite";
+const GEMINI_TRIGGER_TIMEOUT_MS = 60_000; 
 const CROP_TRIGGER_TIMEOUT_MS = 45_000;
-const DEPRECATED_MODELS: Record<string, string> = {
-  "gemini-1.5-pro": SAFE_MODEL,
-  "gemini-1.5-pro-latest": SAFE_MODEL,
-  "gemini-3.1-pro": SAFE_MODEL,
-  "gemini-pro": SAFE_MODEL,
-  "gemini-1.0-pro": SAFE_MODEL,
+const GEMINI_DEPRECATED_MODELS: Record<string, string> = {
+  "gemini-1.5-pro": GEMINI_SAFE_MODEL,
+  "gemini-1.5-pro-latest": GEMINI_SAFE_MODEL,
+  "gemini-3.1-pro": GEMINI_SAFE_MODEL,
+  "gemini-pro": GEMINI_SAFE_MODEL,
+  "gemini-1.0-pro": GEMINI_SAFE_MODEL,
 };
 
-function sanitizeModel(model?: string): string {
-  if (!model) {
-    return SAFE_MODEL;
+function sanitizeModel(
+  model: string | undefined,
+  provider: "GEMINI" | "RNET"
+): string {
+  if (provider === "RNET") {
+    return RNET_SAFE_MODEL;
   }
 
-  return DEPRECATED_MODELS[model] ?? model;
+  if (!model) {
+    return GEMINI_SAFE_MODEL;
+  }
+
+  return GEMINI_DEPRECATED_MODELS[model] ?? model;
 }
 
 function buildQuotaFallback(prompt: string, systemPrompt?: string) {
@@ -171,6 +180,18 @@ export async function POST(req: NextRequest) {
     return new Response("Unauthorized", { status: 401 });
   }
 
+  const aiConnection = await db.aIConnection.findUnique({
+  where:{
+    userId: dbUser.id
+  }
+});
+
+
+const aiProvider =
+  aiConnection?.provider ?? "GEMINI";
+
+  
+
   const workflow = await db.workflow.findUnique({
     where: { id: workflowId, userId: dbUser.id },
   });
@@ -181,7 +202,10 @@ export async function POST(req: NextRequest) {
 
   const nodes = parseStoredJson<StoredNode[]>(workflow.nodes, []);
   const edges = parseStoredJson<StoredEdge[]>(workflow.edges, []);
-
+  console.log(
+    "ALL NODE TYPES:",
+    nodes.map(n => n.type)
+  );
   try {
     topologicalSort(nodes, edges);
   } catch {
@@ -309,6 +333,10 @@ export async function POST(req: NextRequest) {
               fallback: cropResult.fallback ?? false,
             };
           } else if (node.type === "gemini") {
+            console.log("========== GEMINI NODE EXECUTION ==========");
+            console.log("Node ID:", nodeId);
+            console.log("Provider:", aiProvider);
+            console.log("============================================");
             const inputs = resolveInputs(nodeId, node);
             const prompt =
               typeof inputs.prompt === "string" && inputs.prompt.trim().length > 0
@@ -322,18 +350,23 @@ export async function POST(req: NextRequest) {
             let geminiResult: TriggerRunOutput;
 
             try {
-              console.log("==== MODEL DEBUG ====");
-              console.log("Database model:", node.data?.model);
-              console.log("Sanitized:", sanitizeModel(node.data?.model));
-              const handle = await tasks.trigger<typeof geminiTask>(
-                "gemini-task-v2",
-                {
-                  prompt,
-                  systemPrompt,
-                  imageUrl: inputs.image_vision as string | string[] | undefined,
-                  model: sanitizeModel(node.data?.model),
-                },
-              );
+              
+              const handle = await tasks.trigger<typeof aiTask>(
+  "ai-task",
+  {
+    provider: aiProvider,
+    prompt,
+    systemPrompt,
+    imageUrl: inputs.image_vision as string | string[] | undefined,
+    model: sanitizeModel(
+      node.data?.model,
+      aiProvider
+    ),
+
+    accessToken: aiConnection?.accessToken ?? undefined, // temporary
+    userId: dbUser.id,
+  },
+);
               geminiResult = await pollTriggerRun(
                 handle.id,
                 GEMINI_TRIGGER_TIMEOUT_MS,

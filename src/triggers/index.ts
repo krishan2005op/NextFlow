@@ -2,6 +2,7 @@ import { task } from "@trigger.dev/sdk/v3";
 import { GoogleGenerativeAI, type Part } from "@google/generative-ai";
 import axios from "axios";
 import sharp from "sharp";
+export { aiTask } from "./ai";
 
 
 
@@ -115,112 +116,4 @@ const cropHeight = Math.min(
   },
 });
 
-export const geminiTask = task({
-  id: "gemini-task-v2",
-  run: async (payload: {
-    prompt: string;
-    systemPrompt?: string;
-    imageUrl?: string | string[];
-    model?: string;
-  }) => {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return {
-        response: buildQuotaFallback(payload.prompt, payload.systemPrompt),
-        fallback: true,
-      };
-    }
 
-    try {
-      const genAI = new GoogleGenerativeAI(apiKey);
-      console.log("PAYLOAD MODEL =", payload.model);
-      const model = genAI.getGenerativeModel({
-        model: payload.model || "gemini-2.5-flash",
-        systemInstruction: payload.systemPrompt,
-      });
-
-      const parts: Part[] = [{ text: payload.prompt }];
-
-      if (payload.imageUrl) {
-        const imageUrls = Array.isArray(payload.imageUrl)
-          ? payload.imageUrl
-          : [payload.imageUrl];
-
-        for (const url of imageUrls) {
-          if (!url) {
-            continue;
-          }
-
-          let mimeType = "image/jpeg";
-          let base64Data = "";
-
-          if (url.startsWith("data:")) {
-            const matches = url.match(
-              /^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/,
-            );
-            if (matches) {
-              mimeType = matches[1];
-              base64Data = matches[2];
-            }
-          } else {
-            const imgRes = await axios.get(url, { responseType: "arraybuffer" });
-            const contentType = (imgRes.headers["content-type"] as string) ?? "";
-            if (!contentType.startsWith("image/")) {
-              throw new Error(
-                `Failed to download image for Gemini: unexpected content type ${contentType}`,
-              );
-            }
-            base64Data = Buffer.from(imgRes.data, "binary").toString("base64");
-            mimeType = contentType;
-          }
-
-          if (base64Data) {
-            parts.push({
-              inlineData: {
-                data: base64Data,
-                mimeType,
-              },
-            });
-          }
-        }
-      }
-
-      const result = await model.generateContent(parts);
-      return {
-        response: result.response.text(),
-        fallback: false,
-      };
-    } catch (error: any) {
-  console.error("========== GEMINI ERROR ==========");
-
-  console.error(error);
-
-  console.error("Message:", error?.message);
-
-  console.error("Status:", error?.status);
-
-  console.error("Response:", error?.response);
-
-  console.error("==================================");
-
-  throw error;
-}
-    // catch (error) {
-    //   const message =
-    //     error instanceof Error ? error.message.toLowerCase() : "unknown";
-    //   const isQuotaIssue =
-    //     message.includes("quota") ||
-    //     message.includes("429") ||
-    //     message.includes("resource_exhausted");
-
-    //   if (!isQuotaIssue) {
-    //     throw error;
-    //   }
-
-    //   return {
-    //     response: buildQuotaFallback(payload.prompt, payload.systemPrompt),
-    //     fallback: true,
-    //   };
-    // }
-  },
-});
