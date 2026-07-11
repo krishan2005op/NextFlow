@@ -14,7 +14,9 @@ export class RNetProvider implements AIProvider {
   async generate(
     request: AIRequest
   ): Promise<AIResponse> {
-
+    console.log("========== ENTERED RNET PROVIDER ==========");
+    console.log(request);
+    console.log("===========================================");
     if (!request.userId) {
       throw new Error("Missing database user id");
     }
@@ -25,7 +27,19 @@ export class RNetProvider implements AIProvider {
       );
 
     
+    if (request.imageUrl) {
+  const url = Array.isArray(request.imageUrl)
+    ? request.imageUrl[0]
+    : request.imageUrl;
 
+  const response = await fetch(url);
+
+  console.log("IMAGE STATUS:", response.status);
+
+  const arrayBuffer = await response.arrayBuffer();
+
+  console.log("IMAGE SIZE:", arrayBuffer.byteLength);
+}
     const payload = {
       contents: [
         {
